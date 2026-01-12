@@ -31,10 +31,7 @@
 \fancyhead[L]{
     \begin{tikzpicture}[remember picture, overlay]
         \node[anchor=north west, xshift=0.5in, yshift=-0.3in] at (current page.north west) {
-            \color{cosaiDarkBlue}\bfseries\large CoS\textcolor{cosaiGreen}{AI}
-        };
-        \node[anchor=north west, xshift=0.5in, yshift=-0.5in] at (current page.north west) {
-            \tiny\color{gray} COALITION FOR SECURE AI
+            \includegraphics[height=1.2cm]{cosai-logo.png}
         };
     \end{tikzpicture}
 }
@@ -49,9 +46,7 @@
         \end{tikzpicture}
         \centering
         \vspace*{2cm}
-        {\color{cosaiWhite}\fontsize{80}{90}\selectfont CoS\textcolor{cosaiGreen}{AI}\par}
-        \vspace{0.5cm}
-        {\color{cosaiWhite}\Large COALITION FOR SECURE AI\par}
+        {\includegraphics[width=0.8\textwidth]{cosai-logo.png}\par}
         \vfill
         {\color{cosaiWhite}\Huge\bfseries #1\par}
         \vspace{1cm}
