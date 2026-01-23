@@ -13,11 +13,66 @@
 \RequirePackage{tcolorbox}
 \RequirePackage[extralight]{plex-sans}
 
+% ============================================================================
+% FONT CONFIGURATION - Easy customization section
+% ============================================================================
+%
+% Font Weight Options (use with \fontseries{XX}\selectfont):
+%   el = ExtraLight (lightest)
+%   l  = Light
+%   m  = Regular/Medium (normal weight)
+%   sb = SemiBold
+%   b  = Bold (heaviest)
+%
+% Font Size Commands:
+%   \tiny, \scriptsize, \footnotesize, \small, \normalsize
+%   \large, \Large, \LARGE, \huge, \Huge
+%   Or use: \fontsize{size}{baselineskip}\selectfont (e.g., \fontsize{30}{36}\selectfont)
+%
+% ============================================================================
+
+% --- Body Text Font Weight ---
+% Default weight for all body text
+\newcommand{\bodyFontWeight}{el}  % ExtraLight
+
+% --- Bold Text Redefinition ---
+% What weight to use when \textbf{} or **bold** is used in markdown
+\newcommand{\boldFontWeight}{m}   % Regular (instead of actual bold)
+
+% --- Cover Page Title ---
+\newcommand{\coverTitleSize}{30}        % Font size in points
+\newcommand{\coverTitleWeight}{el}      % Font weight (el, l, m, sb, b)
+
+% --- Cover Page Author ---
+\newcommand{\coverAuthorSize}{\Large}   % Size command
+\newcommand{\coverAuthorWeight}{el}     % Font weight
+
+% --- Section Headings (e.g., # Heading in markdown) ---
+\newcommand{\sectionSize}{\Large}       % Size command
+\newcommand{\sectionWeight}{l}         % Font weight (el, l, m, sb, b)
+
+% --- Subsection Headings (e.g., ## Heading in markdown) ---
+\newcommand{\subsectionSize}{\large}    % Size command
+\newcommand{\subsectionWeight}{l}      % Font weight
+
+% --- Subsubsection Headings (e.g., ### Heading in markdown) ---
+\newcommand{\subsubsectionSize}{\normalsize}  % Size command
+\newcommand{\subsubsectionWeight}{l}          % Font weight
+
+% --- Figure Captions ---
+% Note: Caption settings are applied directly below (caption package is picky about expansion)
+% To change: modify the \captionsetup directly (lines 71-77)
+
+% ============================================================================
+% END OF FONT CONFIGURATION
+% ============================================================================
+
 \RequirePackage{caption}
+% Caption configuration - modify these values directly:
 \captionsetup[figure]{
-    font=small,
-    labelfont={color=cosaiDarkBlue},
-    textfont=it,
+    font=small,                          % Caption text size (tiny, small, normalsize, large, etc.)
+    labelfont={color=cosaiDarkBlue},     % "Figure 1:" label style (add bf for bold, etc.)
+    textfont=it,                         % Caption text style (it=italic, normal, bf, etc.)
     justification=centering,
     skip=10pt
 }
@@ -36,18 +91,18 @@
 % --- Page Geometry ---
 \geometry{letterpaper, margin=1in, bottom=1.2in, headheight=14pt}
 
-% --- Fonts ---
-% Using IBM Plex Sans ExtraLight as the default font family
+% --- Font Application ---
+% Using IBM Plex Sans as the default font family
 \renewcommand{\familydefault}{\sfdefault}
-% Force extralight weight globally
+
+% Apply body font weight globally
 \AtBeginDocument{%
-  \fontseries{el}\selectfont
+  \fontseries{\bodyFontWeight}\selectfont
 }
 
-% Redefine bold commands to use regular (medium) weight instead of bold
-% This makes \textbf and \bfseries use regular weight
-\renewcommand{\bfseries}{\fontseries{m}\selectfont}
-\DeclareTextFontCommand{\textbf}{\fontseries{m}\selectfont}
+% Redefine bold commands to use configured weight instead of actual bold
+\renewcommand{\bfseries}{\fontseries{\boldFontWeight}\selectfont}
+\DeclareTextFontCommand{\textbf}{\fontseries{\boldFontWeight}\selectfont}
 
 % --- Header & Footer ---
 \pagestyle{fancy}
@@ -82,7 +137,7 @@
                 text=white,
                 text width=0.8\textwidth,
                 align=left,
-                font=\fontsize{30}{30}\selectfont,
+                font=\fontseries{\coverTitleWeight}\fontsize{\coverTitleSize}{\coverTitleSize}\selectfont,
                 yshift=3cm,
                 xshift=-1cm
                 ] at (current page.center) {
@@ -100,11 +155,11 @@
                 text=white,
                 text width=0.8\textwidth,
                 align=left,
-                font=\Large,
+                font=\fontseries{\coverAuthorWeight}\coverAuthorSize,
                 yshift=3cm,
                 xshift=-1cm,
                 ] at (current page.south) {
-                #2
+                {\hyphenchar\font=-1 #2}
             };
         \end{tikzpicture}
     \end{titlepage}
@@ -118,8 +173,20 @@
 
 % --- Section Styling ---
 \titleformat{\section}
-  {\color{cosaiDarkBlue}\fontseries{el}\selectfont\Large}
+  {\color{cosaiDarkBlue}\fontseries{\sectionWeight}\selectfont\sectionSize}
   {}
   {0pt}
   {}
   [{\color{cosaiGreen}\makebox[0.75\textwidth][l]{\rule{0.75\textwidth}{1pt}}}]
+
+\titleformat{\subsection}
+  {\color{cosaiDarkBlue}\fontseries{\subsectionWeight}\selectfont\subsectionSize}
+  {}
+  {0pt}
+  {}
+
+\titleformat{\subsubsection}
+  {\color{cosaiDarkBlue}\fontseries{\subsubsectionWeight}\selectfont\subsubsectionSize}
+  {}
+  {0pt}
+  {}

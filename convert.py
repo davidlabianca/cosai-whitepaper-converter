@@ -139,8 +139,8 @@ def process_markdown(input_file):
             return match.group(0) # distinct failure, keep original
 
     content = image_pattern.sub(image_replacer, content)
-    
-    return content
+
+    return content.strip()
 
 def main():
     parser = argparse.ArgumentParser(description="Convert Markdown to PDF with Mermaid support.")
