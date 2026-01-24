@@ -6,6 +6,7 @@ import shutil
 import tempfile
 import argparse
 import urllib.request
+import frontmatter
 
 def extract_mermaid_title(mermaid_code):
     """
@@ -13,16 +14,38 @@ def extract_mermaid_title(mermaid_code):
     Returns tuple: (title, code_without_title)
     """
     # Match title in format: title: "Title Text" or title "Title Text"
-    title_pattern = re.compile(r'^\s*title[:\s]+"([^"]+)"', re.MULTILINE)
-    match = title_pattern.search(mermaid_code)
+    # title_pattern = re.compile(r'^\s*title[:\s]+"([^"]+)"', re.MULTILINE)
+    # match = title_pattern.search(mermaid_code)
+    doc = frontmatter.loads(mermaid_code)
+    title = None
+    if 'title' in doc.metadata:
+        title = doc.metadata['title']
+        del doc.metadata['title']
+    # define a unified CoSAI mermaid style
+    if 'config' not in doc.metadata:
+        doc.metadata['config'] = {
+      'look': 'handDrawn',
+      'theme': 'base',
+      'themeVariables': {
+      'primaryColor': '#A8D9A4',
+      'primaryTextColor': '#101828',
+      'primaryBorderColor': '#0059ff',
+      'lineColor': '#475467',
+      'secondaryColor': '#f2f4f7',
+      'tertiaryColor': '#ffffff',
+      'edgeLabelBackground':'#EDF7ED',
+      'clusterBkg' : '#E6EFFF',
+    #   'fontFamily': '"IBM Plex Sans", sans-serif'
+      }
+    }
+    return title, frontmatter.dumps(doc)
     
-    if match:
-        title = match.group(1)
-        # Remove the title line from the code
-        code_without_title = title_pattern.sub('', mermaid_code)
-        return title, code_without_title
-    
-    return None, mermaid_code
+    # if match:
+    #     title = match.group(1)
+    #     # Remove the title line from the code
+    #     code_without_title = title_pattern.sub('', mermaid_code)
+    #     return title, code_without_title
+    # return None, mermaid_code
 
 def convert_mermaid_to_pdf(mermaid_code, index):
     """
@@ -87,7 +110,9 @@ def process_markdown(input_file):
     with open(input_file, "r") as f:
         content = f.read()
 
-    # 0. Remove "Table of Contents" section
+    
+
+    # 0.5. Remove "Table of Contents" section
     # Regex to match "# Table of contents" (case insensitive) and the following list
     # Matches until the next header or end of string
     toc_pattern = re.compile(r"^#\s*Table of [Cc]ontents.*?(?=^#|\Z)", re.MULTILINE | re.DOTALL)
@@ -139,6 +164,14 @@ def process_markdown(input_file):
             return match.group(0) # distinct failure, keep original
 
     content = image_pattern.sub(image_replacer, content)
+    
+    # 3. Replace HTML <br /> tags with LaTeX line breaks
+    # In tables, use \newline; elsewhere use double backslash
+    # Pushing until after Mermaid and image processing
+    content = content.replace('<br />', ' \\newline ')
+    content = content.replace('<br/>', ' \\newline ')
+    content = content.replace('<br>', ' \\newline ')
+    content = content.replace('</br>', ' \\newline ')
 
     return content.strip()
 

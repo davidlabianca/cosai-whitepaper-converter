@@ -68,11 +68,16 @@
 % ============================================================================
 
 \RequirePackage{caption}
+
+% Define custom caption fonts with specific weights
+\DeclareCaptionFont{mediumweight}{\fontseries{m}\selectfont}
+\DeclareCaptionFont{extralight}{\fontseries{el}\selectfont}
+
 % Caption configuration - modify these values directly:
 \captionsetup[figure]{
-    font=small,                          % Caption text size (tiny, small, normalsize, large, etc.)
-    labelfont={color=cosaiDarkBlue},     % "Figure 1:" label style (add bf for bold, etc.)
-    textfont=it,                         % Caption text style (it=italic, normal, bf, etc.)
+    font={small,extralight},                 % Caption text: small size, extralight weight
+    labelfont={mediumweight,color=cosaiDarkBlue}, % "Figure 1:" label: medium weight
+    textfont=it,                             % Caption text style (italic)
     justification=centering,
     skip=10pt
 }
@@ -141,7 +146,6 @@
                 yshift=3cm,
                 xshift=-1cm
                 ] at (current page.center) {
-                % {\hyphenchar\font=-1 \MakeUppercase{#1}}
                 {\hyphenchar\font=-1 #1}
             };
             
