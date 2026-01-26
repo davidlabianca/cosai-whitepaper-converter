@@ -7,6 +7,8 @@ import tempfile
 import argparse
 import urllib.request
 import frontmatter
+from typing import Iterable
+
 
 def extract_mermaid_title(mermaid_code):
     """
@@ -27,15 +29,17 @@ def extract_mermaid_title(mermaid_code):
       'look': 'handDrawn',
       'theme': 'base',
       'themeVariables': {
-      'primaryColor': '#A8D9A4',
-      'primaryTextColor': '#101828',
-      'primaryBorderColor': '#0059ff',
-      'lineColor': '#475467',
-      'secondaryColor': '#f2f4f7',
-      'tertiaryColor': '#ffffff',
-      'edgeLabelBackground':'#EDF7ED',
-      'clusterBkg' : '#E6EFFF',
-    #   'fontFamily': '"IBM Plex Sans", sans-serif'
+        'primaryColor': '#A8D9A4',
+        'primaryTextColor': '#3a5837ff',
+        'primaryBorderColor': '#60B358',
+        'lineColor': '#475467',
+        'secondaryColor': '#f2f4f7',
+        'tertiaryColor': '#ffffff',
+        'edgeLabelBackground':'#EBF6E8',
+        'clusterBkg' : '#E6EFFF', # <- subgraph color
+        'clusterBorder' : '#4D8BFF',
+        'titleColor' : '#0059ff',
+        'fontFamily': '"IBM Plex Sans", sans-serif',
       }
     }
     return title, frontmatter.dumps(doc)
@@ -62,10 +66,18 @@ def convert_mermaid_to_pdf(mermaid_code, index):
         f.write(code_without_title)
     
     # Use npx to run mmdc (Mermaid CLI)
-    cmd = ["npx", "-y", "@mermaid-js/mermaid-cli", "-i", tmp_mmd, "-o", tmp_pdf, "-c", "config.json", "-p", "puppeteerConfig.json"]
+    dep_prefix = 'latex-template' if os.path.exists('latex-template') else '.'
+    cmd = ["npx", 
+           "-y", 
+           "@mermaid-js/mermaid-cli", 
+           "-i", tmp_mmd, 
+           "-o", tmp_pdf, 
+           "-c", os.path.join(dep_prefix, "config.json"), 
+           "-p", os.path.join(dep_prefix, "puppeteerConfig.json")]
     
     print(f"Generating diagram {index}...")
     try:
+        print(f'Command: {cmd}')
         subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         subprocess.run(["pdfcrop", "--margins", "5", tmp_pdf, tmp_pdf], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
@@ -96,11 +108,38 @@ def download_image(url, index):
         tmp_img = f"downloaded_image_{index}{ext}"
         
         print(f"Downloading image {index} from {url}...")
-        urllib.request.urlretrieve(url, tmp_img)
+        if not os.path.exists(tmp_img):
+            urllib.request.urlretrieve(url, tmp_img)
         return tmp_img
     except Exception as e:
         print(f"Error downloading image from {url}: {e}")
         return None
+
+def strip_trailing_whitespace(text: str) -> str:
+    """
+    Return a copy of *text* with all trailing whitespace removed from every line.
+    
+    The function keeps the original line‑ending characters untouched, so the
+    resulting string has the same number of lines as the input.
+    
+    Parameters
+    ----------
+    text : str
+        The multiline string to process.
+
+    Returns
+    -------
+    str
+        A new string with trailing whitespace removed from each line.
+    """
+    # Split the text into lines **including** the line‑endings.
+    # The ``keepends=True`` flag keeps ``\n``/``\r\n``/``\r`` attached.
+    lines: Iterable[str] = text.splitlines(keepends=True)
+
+    processed_lines = []
+    for line in lines:
+        processed_lines.append(line.rstrip())
+    return '\n'.join(processed_lines)
 
 def process_markdown(input_file):
     """
@@ -110,7 +149,7 @@ def process_markdown(input_file):
     with open(input_file, "r") as f:
         content = f.read()
 
-    
+    content = strip_trailing_whitespace(content)
 
     # 0.5. Remove "Table of Contents" section
     # Regex to match "# Table of contents" (case insensitive) and the following list
@@ -168,12 +207,14 @@ def process_markdown(input_file):
     # 3. Replace HTML <br /> tags with LaTeX line breaks
     # In tables, use \newline; elsewhere use double backslash
     # Pushing until after Mermaid and image processing
-    content = content.replace('<br />', ' \\newline ')
-    content = content.replace('<br/>', ' \\newline ')
-    content = content.replace('<br>', ' \\newline ')
-    content = content.replace('</br>', ' \\newline ')
+    if True:
+        content = content.replace('<br />', ' \\newline ')
+        content = content.replace('<br/>', ' \\newline ')
+        content = content.replace('<br>', ' \\newline ')
+        content = content.replace('</br>', ' \\newline ')
+        pass
 
-    return content.strip()
+    return content
 
 def main():
     parser = argparse.ArgumentParser(description="Convert Markdown to PDF with Mermaid support.")
@@ -183,6 +224,7 @@ def main():
     parser.add_argument("--title", help="Document title", default="")
     parser.add_argument("--author", help="Document author(s)", default="")
     parser.add_argument("--date", help="Document date", default="")
+    parser.add_argument("--version", help="Version of the paper", default="1.0")
     
     args = parser.parse_args()
     
@@ -198,12 +240,13 @@ def main():
 
     print("Markdown processed. Running Pandoc...")
 
+    dep_prefix = 'latex-template' if os.path.exists('latex-template') else '.'
     cmd = [
         "pandoc",
         tmp_md_path,
         # "-s",
         "-o", args.output_file,# + ".tex",
-        "--template=cosai-template.tex",
+        f"--template={os.path.join(dep_prefix, 'cosai-template.tex')}",
         "--pdf-engine=pdflatex",
         "--syntax-highlighting=idiomatic"
     ]
@@ -215,20 +258,23 @@ def main():
         cmd.extend(["-V", f"author={args.author}"])
     if args.date:
         cmd.extend(["-V", f"date={args.date}"])
-    print(f'Running command: {cmd}')
+    
+    cmd.extend(["-V", f"git={args.version}"])
+    print(f'Running command: {' '.join(cmd)}')
     try:
         subprocess.run(cmd, check=True)
         print(f"Successfully created {args.output_file}")
     except subprocess.CalledProcessError as e:
+        # Need a better error message here
         print("Error running pandoc:")
         print("Make sure you have a latex engine installed (e.g. pdflatex).")
     except FileNotFoundError:
         print("Error: pandoc not found.")
         print("Make sure pandoc is installed and in your PATH.")
-    # finally:
-    #     # Cleanup temp markdown
-    #     if os.path.exists(tmp_md_path):
-    #         os.remove(tmp_md_path)
+    finally:
+        # Cleanup temp markdown
+        if os.path.exists(tmp_md_path):
+            os.remove(tmp_md_path)
             
     # Optional logic to cleanup generated PDFs/Images could go here
     # but based on previous behaviour we leave them for now.
