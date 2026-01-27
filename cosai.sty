@@ -11,7 +11,9 @@
 \RequirePackage{tikz}
 \RequirePackage{hyperref}
 \RequirePackage{tcolorbox}
-\RequirePackage[extralight]{plex-sans}
+\usepackage[defaultfam,tabular,lining]{montserrat} %% Option 'defaultfam'
+
+
 
 % ============================================================================
 % FONT CONFIGURATION - Easy customization section
@@ -99,6 +101,11 @@
 % --- Font Application ---
 % Using IBM Plex Sans as the default font family
 \renewcommand{\familydefault}{\sfdefault}
+
+%% only if the base font of the document is to be sans serif. Uncomment the two lines below in case of issues
+% \usepackage[T1]{fontenc}
+% \renewcommand*\oldstylenums[1]{{\fontfamily{Montserrat-TOsF}\selectfont #1}}
+
 
 % Apply body font weight globally
 \AtBeginDocument{%
