@@ -1,0 +1,385 @@
+#!/bin/bash
+# Dependency verification script for CoSAI Whitepaper Converter
+# Checks all required dependencies with version validation
+
+# Track failures (don't exit early - check everything)
+FAILURES=0
+
+# Helper function to extract version number from string
+# Usage: extract_version "Python 3.14.0" -> "3.14.0"
+extract_version() {
+    local input="$1"
+    local result=""
+
+    # Remove leading non-digit characters and extract version pattern
+    # This uses bash regex to find X.Y or X.Y.Z pattern
+    if [[ "$input" =~ ([0-9]+\.[0-9]+(\.[0-9]+)?) ]]; then
+        result="${BASH_REMATCH[1]}"
+    fi
+
+    echo "$result"
+}
+
+# Helper function to extract first line from multi-line string
+get_first_line() {
+    local input="$1"
+    echo "${input%%$'\n'*}"
+}
+
+# Helper function to check version comparison
+# Usage: version_ge "actual_version" "required_version"
+# Returns 0 if actual >= required, 1 otherwise
+version_ge() {
+    local actual="$1"
+    local required="$2"
+
+    # Extract major and minor version numbers using bash parameter expansion
+    local actual_major="${actual%%.*}"
+    local actual_rest="${actual#*.}"
+    local actual_minor="${actual_rest%%.*}"
+
+    local required_major="${required%%.*}"
+    local required_rest="${required#*.}"
+    local required_minor="${required_rest%%.*}"
+
+    # Remove any non-numeric characters from minor version
+    actual_minor="${actual_minor//[!0-9]/}"
+    required_minor="${required_minor//[!0-9]/}"
+
+    # Handle missing minor version
+    [ -z "$actual_minor" ] && actual_minor=0
+    [ -z "$required_minor" ] && required_minor=0
+
+    # Compare major version
+    if [ "$actual_major" -gt "$required_major" ]; then
+        return 0
+    elif [ "$actual_major" -lt "$required_major" ]; then
+        return 1
+    fi
+
+    # Major versions equal, compare minor
+    if [ "$actual_minor" -ge "$required_minor" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Check Python 3.12+
+# Honor SKIP_PYTHON environment variable
+if [ "${SKIP_PYTHON:-false}" = "true" ]; then
+    echo "[~] Python check skipped (SKIP_PYTHON=true)"
+else
+    # Clear shell hash table to pick up newly installed binaries
+    hash -r 2>/dev/null || true
+
+    # Check multiple Python paths (prefer python3.12 if available)
+    PYTHON_CMD=""
+    if command -v python3.12 &> /dev/null; then
+        PYTHON_CMD="python3.12"
+    elif [ -x "/usr/local/bin/python3.12" ]; then
+        PYTHON_CMD="/usr/local/bin/python3.12"
+    elif command -v python3 &> /dev/null; then
+        PYTHON_CMD="python3"
+    fi
+
+    if [ -n "$PYTHON_CMD" ]; then
+        python_version=$($PYTHON_CMD --version 2>&1)
+        if [ $? -eq 0 ]; then
+            # Extract version from "Python 3.14.0" format
+            python_ver=$(extract_version "$python_version")
+            if [ -n "$python_ver" ]; then
+                if version_ge "$python_ver" "3.12"; then
+                    echo "[✓] Python $python_ver (requires 3.12+)"
+                else
+                    echo "[✗] Python $python_ver (requires 3.12+) - version too low"
+                    FAILURES=$((FAILURES + 1))
+                fi
+            else
+                echo "[✗] Python version could not be determined"
+                FAILURES=$((FAILURES + 1))
+            fi
+        else
+            echo "[✗] Python command failed"
+            FAILURES=$((FAILURES + 1))
+        fi
+    else
+        echo "[✗] Python not found (requires 3.12+)"
+        FAILURES=$((FAILURES + 1))
+    fi
+fi
+
+# Check Node.js 18+
+# Honor SKIP_NODE environment variable
+if [ "${SKIP_NODE:-false}" = "true" ]; then
+    echo "[~] Node.js check skipped (SKIP_NODE=true)"
+else
+    if command -v node &> /dev/null; then
+        node_version=$(node --version 2>&1)
+        if [ $? -eq 0 ]; then
+            # Extract version from "v20.10.0" format
+            node_ver=$(extract_version "$node_version")
+            if [ -n "$node_ver" ]; then
+                if version_ge "$node_ver" "18.0"; then
+                    echo "[✓] Node.js $node_ver (requires 18+)"
+                else
+                    echo "[✗] Node.js $node_ver (requires 18+) - version too low"
+                    FAILURES=$((FAILURES + 1))
+                fi
+            else
+                echo "[✗] Node.js version could not be determined"
+                FAILURES=$((FAILURES + 1))
+            fi
+        else
+            echo "[✗] Node.js command failed"
+            FAILURES=$((FAILURES + 1))
+        fi
+    else
+        echo "[✗] Node.js not found (requires 18+)"
+        FAILURES=$((FAILURES + 1))
+    fi
+fi
+
+# Check Pandoc 3.0+
+if command -v pandoc &> /dev/null; then
+    pandoc_version=$(pandoc --version 2>&1)
+    if [ $? -eq 0 ]; then
+        # Extract version from "pandoc 3.1.11" format (first line only)
+        pandoc_first_line=$(get_first_line "$pandoc_version")
+        pandoc_ver=$(extract_version "$pandoc_first_line")
+        if [ -n "$pandoc_ver" ]; then
+            if version_ge "$pandoc_ver" "3.0"; then
+                echo "[✓] Pandoc $pandoc_ver (requires 3.0+)"
+            else
+                echo "[✗] Pandoc $pandoc_ver (requires 3.0+) - version too low"
+                FAILURES=$((FAILURES + 1))
+            fi
+        else
+            echo "[✗] Pandoc version could not be determined"
+            FAILURES=$((FAILURES + 1))
+        fi
+    else
+        echo "[✗] Pandoc command failed"
+        FAILURES=$((FAILURES + 1))
+    fi
+else
+    echo "[✗] Pandoc not found (requires 3.0+)"
+    FAILURES=$((FAILURES + 1))
+fi
+
+# Detect LaTeX engine
+# Priority: LATEX_ENGINE env var > converter_config.json > default (tectonic)
+LATEX_ENGINE="${LATEX_ENGINE:-}"
+
+if [ -z "$LATEX_ENGINE" ] && [ -f "converter_config.json" ]; then
+    # Read config file content using bash
+    config_content=""
+    if [ -r "converter_config.json" ]; then
+        while IFS= read -r line || [ -n "$line" ]; do
+            config_content+="$line"
+        done < "converter_config.json"
+    fi
+
+    # Look for "latex_engine": "value" pattern
+    if [[ "$config_content" =~ \"latex_engine\"[[:space:]]*:[[:space:]]*\"([^\"]+)\" ]]; then
+        LATEX_ENGINE_TMP="${BASH_REMATCH[1]}"
+        # Validate that the result is a valid engine name
+        # Valid engines: tectonic, pdflatex, xelatex, lualatex
+        case "$LATEX_ENGINE_TMP" in
+            tectonic|pdflatex|xelatex|lualatex)
+                LATEX_ENGINE="$LATEX_ENGINE_TMP"
+                ;;
+        esac
+    fi
+
+    # If bash parsing failed and python is available, try Python
+    if [ -z "$LATEX_ENGINE" ] && command -v python3 &> /dev/null; then
+        LATEX_ENGINE_TMP=$(python3 -c "import json; data=json.load(open('converter_config.json')); print(data.get('latex_engine', ''))" 2>/dev/null || echo "")
+        # Validate that the result is a valid engine name (not a version string or error)
+        case "$LATEX_ENGINE_TMP" in
+            tectonic|pdflatex|xelatex|lualatex)
+                LATEX_ENGINE="$LATEX_ENGINE_TMP"
+                ;;
+        esac
+    fi
+fi
+
+# Default to tectonic if still empty
+if [ -z "$LATEX_ENGINE" ]; then
+    LATEX_ENGINE="tectonic"
+fi
+
+# Check LaTeX engine
+if command -v "$LATEX_ENGINE" &> /dev/null; then
+    engine_version=$("$LATEX_ENGINE" --version 2>&1)
+    if [ $? -eq 0 ]; then
+        # Extract version number if present
+        engine_first_line=$(get_first_line "$engine_version")
+        engine_ver=$(extract_version "$engine_first_line")
+        if [ -n "$engine_ver" ]; then
+            echo "[✓] $LATEX_ENGINE $engine_ver"
+        else
+            # Some engines may not have clear version format
+            echo "[✓] $LATEX_ENGINE available"
+        fi
+    else
+        echo "[✗] $LATEX_ENGINE command failed"
+        FAILURES=$((FAILURES + 1))
+    fi
+else
+    echo "[✗] $LATEX_ENGINE not found"
+    FAILURES=$((FAILURES + 1))
+fi
+
+# Check Chromium configuration
+# Use configure-chromium.sh --check if available
+# Honor SKIP_CHROMIUM environment variable
+CHROMIUM_CHECK_PASSED=0
+
+if [ "${SKIP_CHROMIUM:-false}" = "true" ]; then
+    echo "[~] Chromium check skipped (SKIP_CHROMIUM=true)"
+    CHROMIUM_CHECK_PASSED=1
+else
+    # Find configure-chromium.sh (try multiple locations)
+    CHROMIUM_SCRIPT=""
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    for path in "$SCRIPT_DIR/configure-chromium.sh" "scripts/configure-chromium.sh" "./configure-chromium.sh"; do
+        if [ -f "$path" ]; then
+            CHROMIUM_SCRIPT="$path"
+            break
+        fi
+    done
+
+    if [ -n "$CHROMIUM_SCRIPT" ]; then
+        # Run configure-chromium.sh --check to verify chromium is configured
+        if [ -x "$CHROMIUM_SCRIPT" ]; then
+            if "$CHROMIUM_SCRIPT" --check &> /dev/null; then
+                echo "[✓] Chromium configured"
+                CHROMIUM_CHECK_PASSED=1
+            else
+                echo "[✗] Chromium not configured"
+                FAILURES=$((FAILURES + 1))
+            fi
+        else
+            # Try with bash if not executable
+            if bash "$CHROMIUM_SCRIPT" --check &> /dev/null; then
+                echo "[✓] Chromium configured"
+                CHROMIUM_CHECK_PASSED=1
+            else
+                echo "[✗] Chromium not configured"
+                FAILURES=$((FAILURES + 1))
+            fi
+        fi
+    elif command -v chromium &> /dev/null || command -v chromium-browser &> /dev/null; then
+        echo "[✓] Chromium available"
+        CHROMIUM_CHECK_PASSED=1
+    else
+        # If configure-chromium.sh doesn't exist and chromium is not in PATH,
+        # we still need to report on Chromium status
+        echo "[✗] Chromium not found"
+        FAILURES=$((FAILURES + 1))
+    fi
+fi
+
+# Check python-frontmatter package
+# Honor SKIP_PYTHON environment variable
+if [ "${SKIP_PYTHON:-false}" = "true" ]; then
+    echo "[~] python-frontmatter check skipped (SKIP_PYTHON=true)"
+else
+    # Try multiple methods to find pip
+    # Prefer python3 since that's what tests/users will call (requirement is 3.12+)
+    pip_cmd=""
+    if command -v python3 &> /dev/null; then
+        pip_cmd="python3 -m pip"
+    elif [ -x /usr/local/bin/python3.12 ]; then
+        pip_cmd="/usr/local/bin/python3.12 -m pip"
+    elif command -v python3.12 &> /dev/null; then
+        pip_cmd="python3.12 -m pip"
+    elif command -v pip3 &> /dev/null; then
+        pip_cmd="pip3"
+    fi
+
+    if [ -n "$pip_cmd" ]; then
+        pip_output=$($pip_cmd show python-frontmatter 2>&1)
+        if [ $? -eq 0 ]; then
+            # Extract version from pip show output
+            # Look for "Version: X.Y.Z" line
+            fm_version=""
+            while IFS= read -r line; do
+                if [[ "$line" =~ ^Version:[[:space:]]*(.+)$ ]]; then
+                    fm_version="${BASH_REMATCH[1]}"
+                    # Trim whitespace
+                    fm_version="${fm_version#"${fm_version%%[![:space:]]*}"}"
+                    fm_version="${fm_version%"${fm_version##*[![:space:]]}"}"
+                    break
+                fi
+            done <<< "$pip_output"
+
+            if [ -n "$fm_version" ]; then
+                echo "[✓] python-frontmatter $fm_version"
+            else
+                echo "[✓] python-frontmatter installed"
+            fi
+        else
+            echo "[✗] python-frontmatter not found"
+            FAILURES=$((FAILURES + 1))
+        fi
+    else
+        echo "[✗] pip not found (cannot verify python-frontmatter)"
+        FAILURES=$((FAILURES + 1))
+    fi
+fi
+
+# Check rsvg-convert
+if command -v rsvg-convert &> /dev/null; then
+    rsvg_version=$(rsvg-convert --version 2>&1)
+    if [ $? -eq 0 ]; then
+        # Extract version from output
+        rsvg_ver=$(extract_version "$rsvg_version")
+        if [ -n "$rsvg_ver" ]; then
+            echo "[✓] rsvg-convert $rsvg_ver"
+        else
+            echo "[✓] rsvg-convert available"
+        fi
+    else
+        echo "[✗] rsvg-convert command failed"
+        FAILURES=$((FAILURES + 1))
+    fi
+else
+    echo "[✗] rsvg-convert not found"
+    FAILURES=$((FAILURES + 1))
+fi
+
+# Check mermaid-cli (via npx)
+# Honor SKIP_NODE environment variable (mermaid-cli requires Node.js)
+if [ "${SKIP_NODE:-false}" = "true" ]; then
+    echo "[~] mermaid-cli check skipped (SKIP_NODE=true)"
+else
+    if command -v npx &> /dev/null; then
+        # Try to check if mermaid-cli is available
+        # Use mmdc --version or similar to verify
+        mermaid_check=$(npx --yes @mermaid-js/mermaid-cli --version 2>&1)
+        if [ $? -eq 0 ]; then
+            # Extract version if present
+            mermaid_ver=$(extract_version "$mermaid_check")
+            if [ -n "$mermaid_ver" ]; then
+                echo "[✓] mermaid-cli $mermaid_ver"
+            else
+                echo "[✓] mermaid-cli available"
+            fi
+        else
+            echo "[✗] mermaid-cli not available via npx"
+            FAILURES=$((FAILURES + 1))
+        fi
+    else
+        echo "[✗] npx not found (cannot verify mermaid-cli)"
+        FAILURES=$((FAILURES + 1))
+    fi
+fi
+
+# Exit with appropriate code
+if [ $FAILURES -eq 0 ]; then
+    exit 0
+else
+    exit 1
+fi
