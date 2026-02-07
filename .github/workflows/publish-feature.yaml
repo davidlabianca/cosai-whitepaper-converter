@@ -103,7 +103,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Bundle scripts into feature
+      - name: Bundle scripts and converter into feature
         run: |
           # Copy scripts into feature directory so they're included in the package
           # This ensures the published feature is self-contained
@@ -111,7 +111,11 @@ jobs:
           cp scripts/install-deps.sh src/whitepaper-converter/scripts/
           cp scripts/verify-deps.sh src/whitepaper-converter/scripts/
           cp scripts/configure-chromium.sh src/whitepaper-converter/scripts/
-          echo "Scripts bundled into feature directory"
+          mkdir -p src/whitepaper-converter/converter/assets
+          cp convert.py src/whitepaper-converter/converter/
+          cp requirements.txt package.json src/whitepaper-converter/converter/
+          cp assets/config.json assets/puppeteerConfig.json assets/cosai-template.tex assets/cosai.sty assets/cosai-logo.png assets/background.pdf "assets/CoSAI(Light).pdf" src/whitepaper-converter/converter/assets/
+          echo "Scripts and converter bundled into feature directory"
 
       # oci-registry is just the registry host. The devcontainers/action
       # automatically appends github.repository as the namespace, producing:
@@ -163,9 +167,15 @@ jobs:
             ### Options
 
             - `latexEngine`: tectonic (default), pdflatex, xelatex, lualatex
+            - `installPath`: Directory to install the converter tool (default: /usr/local/lib/cosai-converter)
             - `skipChromium`: Skip Chromium configuration (default: false)
             - `skipPython`: Skip Python installation (default: false)
             - `skipNode`: Skip Node.js installation (default: false)
+
+            After installation, use `cosai-convert` to convert documents:
+            ```bash
+            cosai-convert input.md output.pdf
+            ```
 
             ### Links
 

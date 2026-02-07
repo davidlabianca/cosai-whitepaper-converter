@@ -9,12 +9,16 @@ on:
       - 'src/**'
       - 'scripts/**'
       - 'test/**'
+      - 'convert.py'
+      - 'assets/**'
       - '.github/workflows/test-feature.yaml'
   pull_request:
     paths:
       - 'src/**'
       - 'scripts/**'
       - 'test/**'
+      - 'convert.py'
+      - 'assets/**'
       - '.github/workflows/test-feature.yaml'
   workflow_call:
 
@@ -26,12 +30,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Bundle scripts into feature
+      - name: Bundle scripts and converter into feature
         run: |
           mkdir -p src/whitepaper-converter/scripts
           cp scripts/install-deps.sh src/whitepaper-converter/scripts/
           cp scripts/verify-deps.sh src/whitepaper-converter/scripts/
           cp scripts/configure-chromium.sh src/whitepaper-converter/scripts/
+          mkdir -p src/whitepaper-converter/converter/assets
+          cp convert.py src/whitepaper-converter/converter/
+          cp requirements.txt package.json src/whitepaper-converter/converter/
+          cp assets/config.json assets/puppeteerConfig.json assets/cosai-template.tex assets/cosai.sty assets/cosai-logo.png assets/background.pdf "assets/CoSAI(Light).pdf" src/whitepaper-converter/converter/assets/
 
       - name: Install devcontainer CLI
         run: npm install -g @devcontainers/cli
@@ -46,12 +54,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Bundle scripts into feature
+      - name: Bundle scripts and converter into feature
         run: |
           mkdir -p src/whitepaper-converter/scripts
           cp scripts/install-deps.sh src/whitepaper-converter/scripts/
           cp scripts/verify-deps.sh src/whitepaper-converter/scripts/
           cp scripts/configure-chromium.sh src/whitepaper-converter/scripts/
+          mkdir -p src/whitepaper-converter/converter/assets
+          cp convert.py src/whitepaper-converter/converter/
+          cp requirements.txt package.json src/whitepaper-converter/converter/
+          cp assets/config.json assets/puppeteerConfig.json assets/cosai-template.tex assets/cosai.sty assets/cosai-logo.png assets/background.pdf "assets/CoSAI(Light).pdf" src/whitepaper-converter/converter/assets/
 
       - name: Install devcontainer CLI
         run: npm install -g @devcontainers/cli

@@ -78,9 +78,9 @@ def mock_env():
     """
     env = os.environ.copy()
     # Remove devcontainer format (uppercase without underscores)
-    devcontainer_vars = ["LATEXENGINE", "SKIPCHROMIUM", "SKIPPYTHON", "SKIPNODE"]
+    devcontainer_vars = ["LATEXENGINE", "SKIPCHROMIUM", "SKIPPYTHON", "SKIPNODE", "INSTALLPATH"]
     # Remove install-deps format (uppercase with underscores)
-    install_deps_vars = ["LATEX_ENGINE", "SKIP_CHROMIUM", "SKIP_PYTHON", "SKIP_NODE"]
+    install_deps_vars = ["LATEX_ENGINE", "SKIP_CHROMIUM", "SKIP_PYTHON", "SKIP_NODE", "INSTALL_PATH"]
 
     for key in devcontainer_vars + install_deps_vars:
         if key in env:
@@ -423,6 +423,7 @@ def test_install_script_sets_errexit():
     ("SKIPCHROMIUM", "SKIP_CHROMIUM"),
     ("SKIPPYTHON", "SKIP_PYTHON"),
     ("SKIPNODE", "SKIP_NODE"),
+    ("INSTALLPATH", "INSTALL_PATH"),
 ])
 def test_install_script_maps_option_to_env_var(option_name, env_var):
     """
@@ -675,7 +676,7 @@ def test_readme_documents_all_options():
     with open(README_FILE) as f:
         content = f.read()
 
-    options = ["latexEngine", "skipChromium", "skipPython", "skipNode"]
+    options = ["latexEngine", "skipChromium", "skipPython", "skipNode", "installPath"]
     for option in options:
         assert option in content, \
             f"README should document '{option}' option"
@@ -929,13 +930,174 @@ def test_feature_json_has_no_extra_unexpected_fields():
         assert len(key) > 0, "Key must not be empty"
 
 
+# ============================================================================
+# Converter Bundling Tests (Sprint 4)
+# ============================================================================
+
+
+def test_feature_json_has_install_path_option():
+    """
+    Test that devcontainer-feature.json has installPath option.
+
+    Given: devcontainer-feature.json with options
+    When: Checking for installPath option
+    Then: Option exists with type string and default /usr/local/lib/cosai-converter
+    """
+    with open(FEATURE_JSON) as f:
+        data = json.load(f)
+
+    options = data["options"]
+    assert "installPath" in options, "installPath option must be defined"
+
+    install_path_option = options["installPath"]
+    assert install_path_option["type"] == "string", "installPath type must be string"
+    assert install_path_option["default"] == "/usr/local/lib/cosai-converter", \
+        "installPath default must be '/usr/local/lib/cosai-converter'"
+    assert "description" in install_path_option, \
+        "installPath must have description"
+    assert len(install_path_option["description"]) > 10, \
+        "installPath description must be descriptive"
+
+
+def test_feature_json_version_bumped_for_converter():
+    """
+    Test that version is >= 0.2.0 to reflect converter bundling feature.
+
+    Given: devcontainer-feature.json with version field
+    When: Checking version value
+    Then: Version is at least 0.2.0 (new functionality added)
+    """
+    with open(FEATURE_JSON) as f:
+        data = json.load(f)
+
+    version = data["version"]
+    major, minor, patch = map(int, version.split('.'))
+
+    # Version should be >= 0.2.0 for converter bundling feature
+    assert (major > 0) or (major == 0 and minor >= 2), \
+        f"Version should be >= 0.2.0 for converter bundling, got {version}"
+
+
+def test_install_script_installs_all_converter_assets():
+    """
+    Test that install.sh references converter assets directory.
+
+    Given: install.sh script
+    When: Checking for asset installation logic
+    Then: Script references assets directory for converter installation
+    """
+    with open(INSTALL_SCRIPT) as f:
+        content = f.read()
+
+    assert any(pattern in content for pattern in [
+        "assets/",
+        "mkdir.*assets",
+        "cp.*assets",
+    ]), "Install script must reference assets directory for converter installation"
+
+
+def test_install_script_installs_converter():
+    """
+    Test that install.sh references convert.py for converter installation.
+
+    Given: install.sh script
+    When: Checking for converter installation logic
+    Then: Script references convert.py file
+    """
+    with open(INSTALL_SCRIPT) as f:
+        content = f.read()
+
+    assert "convert.py" in content, \
+        "Install script must reference convert.py for converter installation"
+
+
+def test_install_script_creates_cosai_convert_wrapper():
+    """
+    Test that install.sh references cosai-convert wrapper creation.
+
+    Given: install.sh script
+    When: Checking for wrapper script creation
+    Then: Script references cosai-convert wrapper
+    """
+    with open(INSTALL_SCRIPT) as f:
+        content = f.read()
+
+    assert "cosai-convert" in content, \
+        "Install script must reference cosai-convert wrapper creation"
+
+
+def test_install_script_exports_converter_path():
+    """
+    Test that install.sh exports COSAI_CONVERTER_PATH environment variable.
+
+    Given: install.sh script
+    When: Checking for environment variable export
+    Then: Script creates /etc/profile.d/cosai-converter.sh or references COSAI_CONVERTER_PATH
+    """
+    with open(INSTALL_SCRIPT) as f:
+        content = f.read()
+
+    assert "COSAI_CONVERTER_PATH" in content or "/etc/profile.d/cosai-converter.sh" in content, \
+        "Install script must export COSAI_CONVERTER_PATH via profile.d or similar"
+
+
+def test_install_script_handles_missing_converter_gracefully():
+    """
+    Test that install.sh has conditional logic for converter installation.
+
+    Given: install.sh script
+    When: Converter files might be missing (repo context vs feature context)
+    Then: Script has conditional logic to handle missing converter gracefully
+    """
+    with open(INSTALL_SCRIPT) as f:
+        content = f.read()
+
+    # Should have some conditional checks for converter files
+    assert any(marker in content for marker in [
+        "if [ -f",
+        "if [ -d",
+        "if test -f",
+        "if test -d",
+    ]), "Install script should have conditional file/directory checks"
+
+
+def test_readme_documents_install_path_option():
+    """
+    Test that README.md documents installPath option.
+
+    Given: README.md exists
+    When: Checking for installPath documentation
+    Then: README mentions installPath option
+    """
+    with open(README_FILE) as f:
+        content = f.read()
+
+    assert "installPath" in content, \
+        "README should document 'installPath' option"
+
+
+def test_readme_documents_cosai_convert_command():
+    """
+    Test that README.md documents cosai-convert command usage.
+
+    Given: README.md exists
+    When: Checking for cosai-convert command documentation
+    Then: README mentions cosai-convert command
+    """
+    with open(README_FILE) as f:
+        content = f.read()
+
+    assert "cosai-convert" in content, \
+        "README should document 'cosai-convert' command usage"
+
+
 """
 Test Summary
 ============
-Total Tests: 51 (43 test functions, 8 parametrized expansions)
-- Feature JSON validation: 19 (added ID format regex, proposals field)
-- install.sh validation: 16 (added path resolution, defaults, boolean handling)
-- README.md validation: 8
+Total Tests: 61 (51 test functions, 10 parametrized expansions)
+- Feature JSON validation: 21 (added installPath option, version bump check)
+- install.sh validation: 23 (added converter installation, wrapper, path export, graceful handling)
+- README.md validation: 10 (added installPath and cosai-convert documentation)
 - Option validation: 3 (4 parametrized to test each engine)
 - Integration checks: 11
 
@@ -945,26 +1107,37 @@ Coverage Areas:
 - Semver version validation
 - Option type and default value validation (proposals, not enum)
 - install.sh script structure and behavior
-- Environment variable mapping (LATEXENGINE → LATEX_ENGINE)
+- Environment variable mapping (LATEXENGINE → LATEX_ENGINE, INSTALLPATH → INSTALL_PATH)
 - Path resolution (feature locates install-deps.sh correctly)
 - Default value handling (tectonic default, skip options)
 - Boolean type handling (true vs "true")
+- Converter bundling (convert.py, assets, wrapper script)
+- Environment variable persistence (COSAI_CONVERTER_PATH)
 - README.md documentation completeness
 - Error handling and edge cases
 
 Test Categories:
-- Happy Path: 35 (valid configurations, standard usage, proper mappings)
-- Edge Cases: 12 (missing files, syntax errors, edge values, boolean formats)
-- Error Conditions: 10 (invalid JSON, missing options, incorrect types, path issues)
+- Happy Path: 42 (valid configurations, standard usage, proper mappings, converter installation)
+- Edge Cases: 14 (missing files, syntax errors, edge values, boolean formats, missing converter)
+- Error Conditions: 12 (invalid JSON, missing options, incorrect types, path issues)
 
 Key Validation Points:
 1. Feature ID: ^[a-z][a-z0-9-]*$ (devcontainer spec)
-2. Version: X.Y.Z (semver)
+2. Version: X.Y.Z (semver), >= 0.2.0 for converter bundling
 3. Options use 'proposals' not 'enum' (devcontainer spec)
 4. Environment variable flow: latexEngine → LATEXENGINE → LATEX_ENGINE
 5. Path resolution: install.sh at src/whitepaper-converter/ finds ../../scripts/
-6. Defaults: LATEXENGINE:-tectonic, skip options handle unset gracefully
+6. Defaults: LATEXENGINE:-tectonic, skip options handle unset gracefully, INSTALLPATH:-/usr/local/lib/cosai-converter
 7. Boolean handling: Both true and "true" supported
+8. Converter bundling: install.sh copies convert.py + assets to INSTALL_PATH
+9. Wrapper script: cosai-convert created in /usr/local/bin
+10. Environment persistence: COSAI_CONVERTER_PATH exported via /etc/profile.d
+
+Sprint 4 - Converter Bundling Tests:
+These tests drive the implementation of bundling the actual converter
+(convert.py + assets) into the devcontainer feature. Previously the feature
+only installed system dependencies. Now it will also install the converter
+itself and create a wrapper script for easy usage.
 
 This test suite follows TDD principles - all tests will fail initially
 since the feature doesn't exist yet. Tests are designed to drive the

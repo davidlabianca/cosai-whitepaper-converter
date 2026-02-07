@@ -24,5 +24,13 @@
         "skipNode": true
       }
     }
+  },
+  "custom_path": {
+    "image": "mcr.microsoft.com/devcontainers/base:debian",
+    "features": {
+      "whitepaper-converter": {
+        "installPath": "/opt/cosai"
+      }
+    }
   }
 }

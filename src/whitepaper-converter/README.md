@@ -19,6 +19,7 @@ Add this feature to your `.devcontainer/devcontainer.json`:
   "features": {
     "ghcr.io/cosai-oasis/cosai-whitepaper-converter/whitepaper-converter:1": {
       "latexEngine": "tectonic",
+      "installPath": "/usr/local/lib/cosai-converter",
       "skipChromium": false,
       "skipPython": false,
       "skipNode": false
@@ -42,6 +43,7 @@ We recommend using `:1` to automatically receive compatible updates.
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `latexEngine` | string | `"tectonic"` | LaTeX engine to install. Supported values: `tectonic`, `pdflatex`, `xelatex`, `lualatex` |
+| `installPath` | string | `"/usr/local/lib/cosai-converter"` | Directory to install the converter tool (convert.py and assets) |
 | `skipChromium` | boolean | `false` | Skip Chromium configuration for Mermaid rendering |
 | `skipPython` | boolean | `false` | Skip Python installation and dependencies |
 | `skipNode` | boolean | `false` | Skip Node.js installation and Mermaid CLI |
@@ -115,6 +117,34 @@ The installer automatically detects your platform and uses the appropriate packa
 After installation, the feature sets the `COSAI_CONVERTER_INSTALLED` environment variable to `true`.
 
 The LaTeX engine choice is configured via the `LATEX_ENGINE` environment variable during installation.
+
+## Converter Usage
+
+After installation, use the `cosai-convert` command to convert Markdown to PDF:
+
+```bash
+cosai-convert input.md output.pdf
+```
+
+With options:
+
+```bash
+cosai-convert input.md output.pdf --title "My Document" --engine pdflatex
+```
+
+The converter is installed to the path specified by `installPath` (default: `/usr/local/lib/cosai-converter`). The `COSAI_CONVERTER_PATH` environment variable points to the installation directory.
+
+### Custom Install Path
+
+```json
+{
+  "features": {
+    "ghcr.io/cosai-oasis/cosai-whitepaper-converter/whitepaper-converter:1": {
+      "installPath": "/opt/cosai"
+    }
+  }
+}
+```
 
 ## Requirements
 

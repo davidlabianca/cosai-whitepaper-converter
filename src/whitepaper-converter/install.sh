@@ -91,6 +91,71 @@ echo "  Skip Node: ${SKIP_NODE}"
 
 "${INSTALL_DEPS_SCRIPT}"
 
+# ============================================================================
+# Converter Installation
+# ============================================================================
+
+# Map installPath option (devcontainer passes as INSTALLPATH)
+INSTALL_PATH="${INSTALLPATH:-/usr/local/lib/cosai-converter}"
+
+# Validate install path (must be absolute, safe characters only)
+if [[ ! "${INSTALL_PATH}" =~ ^/[a-zA-Z0-9/_.-]+$ ]]; then
+    echo "Error: Invalid installPath '${INSTALL_PATH}'" >&2
+    echo "Path must be absolute and contain only alphanumeric, dash, underscore, dot, and slash characters" >&2
+    exit 1
+fi
+
+# Find converter files (bundled first, then repo root)
+CONVERTER_DIR=""
+if [ -f "${SCRIPT_DIR}/converter/convert.py" ]; then
+    CONVERTER_DIR="${SCRIPT_DIR}/converter"
+elif [ -f "${SCRIPT_DIR}/../../convert.py" ]; then
+    CONVERTER_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+fi
+
+if [ -n "${CONVERTER_DIR}" ]; then
+    echo "Installing converter to ${INSTALL_PATH}..."
+
+    # Create install directory and copy files
+    mkdir -p "${INSTALL_PATH}/assets"
+    cp "${CONVERTER_DIR}/convert.py" "${INSTALL_PATH}/"
+
+    # Copy assets explicitly (avoids glob issues with special filenames)
+    if [ -d "${CONVERTER_DIR}/assets" ]; then
+        for asset in config.json puppeteerConfig.json cosai-template.tex cosai.sty \
+                     cosai-logo.png background.pdf "CoSAI(Light).pdf"; do
+            if [ -f "${CONVERTER_DIR}/assets/${asset}" ]; then
+                cp "${CONVERTER_DIR}/assets/${asset}" "${INSTALL_PATH}/assets/"
+            fi
+        done
+    fi
+
+    # Copy dependency files if available
+    for f in requirements.txt package.json; do
+        if [ -f "${CONVERTER_DIR}/${f}" ]; then
+            cp "${CONVERTER_DIR}/${f}" "${INSTALL_PATH}/"
+        fi
+    done
+
+    # Create wrapper script
+    cat > /usr/local/bin/cosai-convert << WRAPPER_EOF
+#!/usr/bin/env bash
+exec python3 "${INSTALL_PATH}/convert.py" "\$@"
+WRAPPER_EOF
+    chmod +x /usr/local/bin/cosai-convert
+
+    # Export COSAI_CONVERTER_PATH via profile.d
+    echo "export COSAI_CONVERTER_PATH=\"${INSTALL_PATH}\"" > /etc/profile.d/cosai-converter.sh
+
+    echo "Converter installed to ${INSTALL_PATH}"
+    echo "  Wrapper: /usr/local/bin/cosai-convert"
+    echo "  Path variable: COSAI_CONVERTER_PATH=${INSTALL_PATH}"
+else
+    echo "Warning: Converter files not found, skipping converter installation" >&2
+    echo "  Dependencies were installed successfully" >&2
+    echo "  To use the converter, clone the repository or install convert.py manually" >&2
+fi
+
 # Export success indicator (persisted via containerEnv in devcontainer-feature.json)
 export COSAI_CONVERTER_INSTALLED="true"
 

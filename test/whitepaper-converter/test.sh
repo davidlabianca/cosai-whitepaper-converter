@@ -41,4 +41,20 @@ check "COSAI_CONVERTER_INSTALLED set" test "${COSAI_CONVERTER_INSTALLED}" = "tru
 # Verify pdflatex is NOT installed (should only have tectonic)
 check "pdflatex not installed" bash -c "! command -v pdflatex"
 
+# Verify converter installation
+check "convert.py installed" test -f /usr/local/lib/cosai-converter/convert.py
+check "converter assets exist" test -f /usr/local/lib/cosai-converter/assets/cosai-template.tex
+check "cosai.sty exists" test -f /usr/local/lib/cosai-converter/assets/cosai.sty
+check "config.json exists" test -f /usr/local/lib/cosai-converter/assets/config.json
+check "cosai-logo.png exists" test -f /usr/local/lib/cosai-converter/assets/cosai-logo.png
+check "puppeteerConfig.json exists" test -f /usr/local/lib/cosai-converter/assets/puppeteerConfig.json
+check "background.pdf exists" test -f /usr/local/lib/cosai-converter/assets/background.pdf
+check "CoSAI(Light).pdf exists" test -f "/usr/local/lib/cosai-converter/assets/CoSAI(Light).pdf"
+check "requirements.txt installed" test -f /usr/local/lib/cosai-converter/requirements.txt
+check "package.json installed" test -f /usr/local/lib/cosai-converter/package.json
+check "cosai-convert wrapper exists" command -v cosai-convert
+check "cosai-convert is executable" test -x /usr/local/bin/cosai-convert
+check "wrapper points to default path" bash -c "grep '/usr/local/lib/cosai-converter' /usr/local/bin/cosai-convert"
+check "COSAI_CONVERTER_PATH set" bash -c ". /etc/profile.d/cosai-converter.sh && test -n \"\${COSAI_CONVERTER_PATH}\""
+
 reportResults
