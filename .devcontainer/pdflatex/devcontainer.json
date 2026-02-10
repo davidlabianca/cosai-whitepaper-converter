@@ -1,32 +1,24 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
-	"name": "Python-314",
+	"name": "CoSAI Whitepaper Converter (pdflatex)",
 	"dockerFile": "Dockerfile",
-	"build": {
-		"args": {
-			"WORKSPACE": "/workspace",
-			"WORKSPACE_REPO": "secure-ai-tooling"
-		}
+
+	"containerEnv": {
+		"LATEX_ENGINE": "pdflatex"
 	},
 
 	"features": {
 		"ghcr.io/devcontainers/features/python:1": {
-	      "version": "3.14"
-	    },
-		"ghcr.io/devcontainers/features/node:1": {},
-		"ghcr.io/rocker-org/devcontainer-features/pandoc:1": {
-			"version": "latest"
-		}
-	},
-	
-	"onCreateCommand": {
-		"pip-install": "pip install -r requirements.txt",
-		"npm-install": "npm install",
-		"configure-chromium": "./scripts/configure-chromium.sh --auto"
+			"version": "3.14"
+		},
+		"ghcr.io/devcontainers/features/node:1": {}
 	},
 
-	// Configure tool-specific properties.
+	"onCreateCommand": {
+		"install-deps": "./scripts/install-deps.sh",
+		"pip-install": "pip install -r requirements.txt",
+		"npm-install": "npm install"
+	},
+
 	"customizations": {
 		"vscode": {
 			"extensions": [
