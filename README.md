@@ -10,7 +10,8 @@ The `convert.py` script takes a few optional parameters, though we try to minimi
 
 ```
 usage: convert.py [-h] [--title TITLE] [--author AUTHOR] [--date DATE] [--version VERSION]
-                  [--engine {tectonic,pdflatex,xelatex,lualatex}] input_file output_file
+                  [--engine {tectonic,pdflatex,xelatex,lualatex}] [--debug]
+                  input_file output_file
 
 Convert Markdown to PDF with Mermaid support.
 
@@ -26,12 +27,13 @@ options:
   --version VERSION  Version of the paper
   --engine {tectonic,pdflatex,xelatex,lualatex}
                      LaTeX engine to use (default: tectonic)
+  --debug            Save intermediate files (processed.md, .tex) and show verbose output
 ```
 
 ## System Requirements
 
 - **Python**: 3.12 or higher
-- **Pandoc**: 3.0 or higher
+- **Pandoc**: 3.8.2.1 or higher
 - **Node.js**: 18 or higher (for Mermaid CLI)
 - **LaTeX engine**: One of: tectonic (default), pdflatex, xelatex, or lualatex
 
@@ -141,6 +143,7 @@ Testing several markdown files has revealed a few best practices or things to no
 
 ## Known Issues
 1. Currently there is an issue where some formatted text, such as `**I want this bold**` will not be converted to a `\textbf` and will not not be bold. So far, this has only been observed in Markdown Tables.
+2. ~~**"No counter '' defined"**~~ Fixed by upgrading Pandoc to 3.8.2.1. Pandoc 3.8.1 emitted `\def\LTcaptype{}` for uncaptioned tables, which broke with the `caption` package. If you see this error, upgrade Pandoc.
 
 ## Troubleshooting
 
@@ -154,8 +157,15 @@ Testing several markdown files has revealed a few best practices or things to no
 - Check that `npx` is available in your PATH
 - Mermaid CLI is run via `npx -y @mermaid-js/mermaid-cli`
 
+### Debugging conversion issues
+Use `--debug` to save intermediate files and see verbose engine output:
+```bash
+python convert.py input.md output.pdf --debug
+```
+This produces `output_debug.md` (preprocessed Markdown) and `output_debug.tex` (intermediate LaTeX) alongside the PDF.
+
 ### Pandoc not found
-- Verify Pandoc is installed: `pandoc --version`
+- Verify Pandoc is installed: `pandoc --version` (must be 3.8.2.1+)
 - Ensure Pandoc is in your PATH
 - The devcontainer includes Pandoc pre-installed
 

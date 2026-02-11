@@ -155,12 +155,20 @@ This will detect Playwright Chromium or system Chromium and configure
 
 **Cause**: Pandoc version too old.
 
-**Solution**: Upgrade to Pandoc 3.0+:
+**Solution**: Upgrade to Pandoc 3.8.2.1+:
 ```bash
 # Ubuntu (get latest from GitHub)
-wget https://github.com/jgm/pandoc/releases/download/3.1.11/pandoc-3.1.11-1-amd64.deb
-sudo dpkg -i pandoc-3.1.11-1-amd64.deb
+wget https://github.com/jgm/pandoc/releases/download/3.8.2.1/pandoc-3.8.2.1-1-amd64.deb
+sudo dpkg -i pandoc-3.8.2.1-1-amd64.deb
 ```
+
+### "No counter '' defined" Error
+
+**Symptom**: `LaTeX Error: No counter '' defined` during PDF generation, typically when the Markdown contains uncaptioned tables.
+
+**Cause**: Pandoc versions before 3.8.2.1 emitted `\def\LTcaptype{}` for uncaptioned tables, which broke the `caption` LaTeX package.
+
+**Solution**: Upgrade Pandoc to 3.8.2.1 or later (see above). This was fixed in [Pandoc #11201](https://github.com/jgm/pandoc/issues/11201).
 
 ## Image Issues
 
@@ -284,22 +292,25 @@ sudo dpkg -i pandoc-3.1.11-1-amd64.deb
 
 ## Debug Tips
 
-### Verbose Output
+### Using `--debug` Mode
 
-Check the temporary files by modifying the script to preserve them:
-```python
-# In convert.py, change:
-with tempfile.TemporaryDirectory(...) as temp_dir:
-# To:
-temp_dir = "/tmp/debug_conversion"
-os.makedirs(temp_dir, exist_ok=True)
+The `--debug` flag saves intermediate files and shows verbose engine output:
+
+```bash
+python convert.py input.md output.pdf --debug
 ```
+
+This produces:
+- `output_debug.md` — preprocessed Markdown (after all transformations)
+- `output_debug.tex` — intermediate LaTeX (before PDF compilation)
+- Verbose pandoc/engine output on the terminal
 
 ### Check Intermediate Files
 
-1. Look at `processed.md` in temp directory for preprocessed Markdown
-2. Check SVG files for Mermaid output
-3. Run pandoc manually for more verbose errors:
+1. Look at the `_debug.md` file for preprocessed Markdown
+2. Look at the `_debug.tex` file for the LaTeX pandoc generates
+3. Check SVG files for Mermaid output
+4. Run pandoc manually for more verbose errors:
    ```bash
    pandoc processed.md -o output.pdf --template=cosai-template.tex --pdf-engine=tectonic
    ```

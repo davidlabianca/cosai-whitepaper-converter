@@ -15,6 +15,7 @@ python convert.py [OPTIONS] input_file output_file
 | `--date DATE` | Override document date | From YAML frontmatter |
 | `--version VERSION` | Document version (e.g., git commit) | `1.0` |
 | `--engine ENGINE` | LaTeX engine to use | `tectonic` |
+| `--debug` | Save intermediate files (processed.md, .tex) and show verbose output | Off |
 
 ### Examples
 
@@ -30,6 +31,9 @@ python convert.py input.md output.pdf --version $(git rev-parse --short HEAD)
 
 # With specific LaTeX engine
 python convert.py input.md output.pdf --engine xelatex
+
+# Debug mode: save intermediate files and show verbose output
+python convert.py input.md output.pdf --debug
 ```
 
 ## LaTeX Engine Selection
