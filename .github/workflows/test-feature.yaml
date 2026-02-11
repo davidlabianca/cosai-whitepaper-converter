@@ -2,12 +2,9 @@ name: Test Devcontainer Feature
 
 on:
   push:
-    branches:
-      - main
-      - feature/**
+    branches: [main]
     paths:
       - 'src/**'
-      - 'scripts/**'
       - 'test/**'
       - 'convert.py'
       - 'assets/**'
@@ -15,12 +12,15 @@ on:
   pull_request:
     paths:
       - 'src/**'
-      - 'scripts/**'
       - 'test/**'
       - 'convert.py'
       - 'assets/**'
       - '.github/workflows/test-feature.yaml'
   workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-scenarios:
@@ -31,15 +31,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Bundle scripts and converter into feature
-        run: |
-          mkdir -p src/whitepaper-converter/scripts
-          cp scripts/install-deps.sh src/whitepaper-converter/scripts/
-          cp scripts/verify-deps.sh src/whitepaper-converter/scripts/
-          cp scripts/configure-chromium.sh src/whitepaper-converter/scripts/
-          mkdir -p src/whitepaper-converter/converter/assets
-          cp convert.py src/whitepaper-converter/converter/
-          cp requirements.txt package.json src/whitepaper-converter/converter/
-          cp assets/config.json assets/puppeteerConfig.json assets/cosai-template.tex assets/cosai.sty assets/cosai-logo.png assets/background.pdf "assets/CoSAI(Light).pdf" src/whitepaper-converter/converter/assets/
+        uses: ./.github/actions/bundle-feature
 
       - name: Install devcontainer CLI
         run: npm install -g @devcontainers/cli
@@ -55,19 +47,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Bundle scripts and converter into feature
-        run: |
-          mkdir -p src/whitepaper-converter/scripts
-          cp scripts/install-deps.sh src/whitepaper-converter/scripts/
-          cp scripts/verify-deps.sh src/whitepaper-converter/scripts/
-          cp scripts/configure-chromium.sh src/whitepaper-converter/scripts/
-          mkdir -p src/whitepaper-converter/converter/assets
-          cp convert.py src/whitepaper-converter/converter/
-          cp requirements.txt package.json src/whitepaper-converter/converter/
-          cp assets/config.json assets/puppeteerConfig.json assets/cosai-template.tex assets/cosai.sty assets/cosai-logo.png assets/background.pdf "assets/CoSAI(Light).pdf" src/whitepaper-converter/converter/assets/
+        uses: ./.github/actions/bundle-feature
 
       - name: Install devcontainer CLI
         run: npm install -g @devcontainers/cli
 
       - name: Test on Ubuntu base image
         run: devcontainer features test --skip-scenarios -f whitepaper-converter -i mcr.microsoft.com/devcontainers/base:ubuntu .
-

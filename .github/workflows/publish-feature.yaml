@@ -66,6 +66,11 @@ jobs:
 
           echo "Version matches: $MANIFEST_VERSION"
 
+  # Python unit tests (reusable workflow)
+  test-python:
+    name: Test Python
+    uses: ./.github/workflows/test-python.yaml
+
   # Full install script tests (reusable workflow)
   test-install:
     name: Test Install Scripts
@@ -80,7 +85,7 @@ jobs:
   publish:
     name: Publish to GHCR
     runs-on: ubuntu-latest
-    needs: [validate, test-install, test-feature]
+    needs: [validate, test-python, test-install, test-feature]
     permissions:
       contents: write
       packages: write
@@ -104,18 +109,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bundle scripts and converter into feature
-        run: |
-          # Copy scripts into feature directory so they're included in the package
-          # This ensures the published feature is self-contained
-          mkdir -p src/whitepaper-converter/scripts
-          cp scripts/install-deps.sh src/whitepaper-converter/scripts/
-          cp scripts/verify-deps.sh src/whitepaper-converter/scripts/
-          cp scripts/configure-chromium.sh src/whitepaper-converter/scripts/
-          mkdir -p src/whitepaper-converter/converter/assets
-          cp convert.py src/whitepaper-converter/converter/
-          cp requirements.txt package.json src/whitepaper-converter/converter/
-          cp assets/config.json assets/puppeteerConfig.json assets/cosai-template.tex assets/cosai.sty assets/cosai-logo.png assets/background.pdf "assets/CoSAI(Light).pdf" src/whitepaper-converter/converter/assets/
-          echo "Scripts and converter bundled into feature directory"
+        uses: ./.github/actions/bundle-feature
 
       # oci-registry is just the registry host. The devcontainers/action
       # automatically appends github.repository as the namespace, producing:
@@ -190,7 +184,7 @@ jobs:
   notify:
     name: Notify
     runs-on: ubuntu-latest
-    needs: [validate, test-install, test-feature, publish]
+    needs: [validate, test-python, test-install, test-feature, publish]
     if: always()
     steps:
       - name: Check workflow status
@@ -198,6 +192,8 @@ jobs:
           # Treat success and skipped as acceptable outcomes
           if [ "${{ needs.validate.result }}" != "failure" ] && \
              [ "${{ needs.validate.result }}" != "cancelled" ] && \
+             [ "${{ needs.test-python.result }}" != "failure" ] && \
+             [ "${{ needs.test-python.result }}" != "cancelled" ] && \
              [ "${{ needs.test-install.result }}" != "failure" ] && \
              [ "${{ needs.test-install.result }}" != "cancelled" ] && \
              [ "${{ needs.test-feature.result }}" != "failure" ] && \
@@ -210,6 +206,7 @@ jobs:
           else
             echo "FAILURE: Workflow failed"
             echo "  Validate result:      ${{ needs.validate.result }}"
+            echo "  Test python result:   ${{ needs.test-python.result }}"
             echo "  Test install result:  ${{ needs.test-install.result }}"
             echo "  Test feature result:  ${{ needs.test-feature.result }}"
             echo "  Publish result:       ${{ needs.publish.result }}"

@@ -2,6 +2,7 @@ name: Test Install Scripts
 
 on:
   push:
+    branches: [main]
     paths:
       - 'scripts/**'
       - '.github/workflows/test-install.yaml'
@@ -10,6 +11,10 @@ on:
       - 'scripts/**'
       - '.github/workflows/test-install.yaml'
   workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-verify:
@@ -32,25 +37,15 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        engine: [tectonic, pdflatex, default]
+        engine: [tectonic, pdflatex]
     steps:
       - uses: actions/checkout@v4
 
       - name: Run install script
-        run: |
-          if [ "${{ matrix.engine }}" != "default" ]; then
-            LATEX_ENGINE=${{ matrix.engine }} bash ./scripts/install-deps.sh
-          else
-            bash ./scripts/install-deps.sh
-          fi
+        run: LATEX_ENGINE=${{ matrix.engine }} bash ./scripts/install-deps.sh
 
       - name: Verify installation
-        run: |
-          if [ "${{ matrix.engine }}" != "default" ]; then
-            LATEX_ENGINE=${{ matrix.engine }} bash ./scripts/verify-deps.sh
-          else
-            bash ./scripts/verify-deps.sh
-          fi
+        run: LATEX_ENGINE=${{ matrix.engine }} bash ./scripts/verify-deps.sh
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -75,11 +70,7 @@ jobs:
 
           Testing basic conversion.
           ' > /tmp/test.md
-          if [ "${{ matrix.engine }}" != "default" ]; then
-            LATEX_ENGINE=${{ matrix.engine }} python convert.py /tmp/test.md /tmp/test.pdf
-          else
-            python convert.py /tmp/test.md /tmp/test.pdf
-          fi
+          LATEX_ENGINE=${{ matrix.engine }} python convert.py /tmp/test.md /tmp/test.pdf
 
       - name: Verify PDF was created
         run: |

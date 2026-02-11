@@ -122,7 +122,7 @@ if [ -n "${CONVERTER_DIR}" ]; then
 
     # Copy assets explicitly (avoids glob issues with special filenames)
     if [ -d "${CONVERTER_DIR}/assets" ]; then
-        for asset in config.json puppeteerConfig.json cosai-template.tex cosai.sty \
+        for asset in config.json puppeteerConfig.json.orig cosai-template.tex cosai.sty \
                      cosai-logo.png background.pdf "CoSAI(Light).pdf"; do
             if [ -f "${CONVERTER_DIR}/assets/${asset}" ]; then
                 cp "${CONVERTER_DIR}/assets/${asset}" "${INSTALL_PATH}/assets/"
@@ -130,12 +130,14 @@ if [ -n "${CONVERTER_DIR}" ]; then
         done
     fi
 
-    # Overwrite bundled puppeteerConfig.json with the freshly generated one.
+    # Overwrite with the freshly generated puppeteerConfig.json from configure-chromium.sh.
     # configure-chromium.sh (called by install-deps.sh) writes a platform-correct
-    # config to SCRIPT_DIR/assets/. The bundled copy may have a stale hardcoded
-    # executablePath from the build environment.
+    # config to SCRIPT_DIR/assets/. If that doesn't exist, copy .orig as the runtime
+    # config so the converter always has a valid puppeteerConfig.json.
     if [ -f "${SCRIPT_DIR}/assets/puppeteerConfig.json" ]; then
         cp "${SCRIPT_DIR}/assets/puppeteerConfig.json" "${INSTALL_PATH}/assets/"
+    elif [ -f "${INSTALL_PATH}/assets/puppeteerConfig.json.orig" ]; then
+        cp "${INSTALL_PATH}/assets/puppeteerConfig.json.orig" "${INSTALL_PATH}/assets/puppeteerConfig.json"
     fi
 
     # Copy dependency files if available

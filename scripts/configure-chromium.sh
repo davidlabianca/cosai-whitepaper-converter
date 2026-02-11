@@ -254,30 +254,70 @@ configure_chromium_path() {
     CHROMIUM_PATH="$chromium_path"
 }
 
+# Generate platform-specific puppeteerConfig.json from template or from scratch.
+# In repo context: copies puppeteerConfig.json.orig and injects executablePath.
+# In bundled feature context: writes config from scratch.
+# Writes to $PROJECT_ROOT/assets/puppeteerConfig.json (gitignored in repo).
 configure_puppeteer_config() {
     local config_path="$PROJECT_ROOT/assets/puppeteerConfig.json"
+    local template_path="$PROJECT_ROOT/assets/puppeteerConfig.json.orig"
 
-    if [[ -n "$CHROMIUM_PATH" ]]; then
-        # Write config with executablePath
-        cat <<EOF > "$config_path"
-{
-    "defaultViewport": null,
-    "executablePath": "$CHROMIUM_PATH",
-    "args": ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
-}
-EOF
-        echo "✅ Wrote puppeteer config to: $config_path"
-        echo "   Set executablePath to: $CHROMIUM_PATH"
+    # Start from the .orig template if it exists (normal repo checkout).
+    # In bundled feature context, get_project_root() won't find it, so fall back
+    # to writing from scratch.
+    if [[ -f "$template_path" ]]; then
+        cp "$template_path" "$config_path"
+
+        if [[ -n "$CHROMIUM_PATH" ]]; then
+            # Inject executablePath into the copied template using sys.argv
+            # to avoid shell injection via CHROMIUM_PATH
+            python3 -c "
+import json, sys
+config_path, chromium_path = sys.argv[1], sys.argv[2]
+with open(config_path) as f:
+    cfg = json.load(f)
+cfg['executablePath'] = chromium_path
+with open(config_path, 'w') as f:
+    json.dump(cfg, f, indent=4)
+    f.write('\n')
+" "$config_path" "$CHROMIUM_PATH" || {
+                echo "❌ Error: python3 is required to inject executablePath into config"
+                echo "   Install Python 3 or use auto-detection mode"
+                exit 1
+            }
+            echo "✅ Wrote puppeteer config to: $config_path"
+            echo "   Copied from template: $template_path"
+            echo "   Set executablePath to: $CHROMIUM_PATH"
+        else
+            echo "✅ Wrote puppeteer config to: $config_path"
+            echo "   Copied from template: $template_path"
+            echo "   Using automatic Chrome detection"
+        fi
     else
-        # Write config without executablePath (auto-detection)
-        cat <<EOF > "$config_path"
-{
-    "defaultViewport": null,
-    "args": ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+        # No template found — write config from scratch (bundled feature context)
+        # Use Python with sys.argv to safely handle CHROMIUM_PATH
+        python3 -c "
+import json, sys
+cfg = {
+    'defaultViewport': None,
+    'args': ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
 }
-EOF
-        echo "✅ Wrote puppeteer config to: $config_path"
-        echo "   Using automatic Chrome detection"
+if len(sys.argv) > 2 and sys.argv[2]:
+    cfg['executablePath'] = sys.argv[2]
+with open(sys.argv[1], 'w') as f:
+    json.dump(cfg, f, indent=4)
+    f.write('\n')
+" "$config_path" "$CHROMIUM_PATH" || {
+            echo "❌ Error: python3 is required to write puppeteer config"
+            exit 1
+        }
+        if [[ -n "$CHROMIUM_PATH" ]]; then
+            echo "✅ Wrote puppeteer config to: $config_path"
+            echo "   Set executablePath to: $CHROMIUM_PATH"
+        else
+            echo "✅ Wrote puppeteer config to: $config_path"
+            echo "   Using automatic Chrome detection"
+        fi
     fi
 }
 

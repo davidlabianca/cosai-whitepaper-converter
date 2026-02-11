@@ -1,0 +1,17 @@
+name: Bundle Feature
+description: Bundle scripts and converter into the feature directory for testing/publishing
+
+runs:
+  using: composite
+  steps:
+    - name: Bundle scripts and converter into feature
+      shell: bash
+      run: |
+        mkdir -p src/whitepaper-converter/scripts
+        cp scripts/install-deps.sh src/whitepaper-converter/scripts/
+        cp scripts/verify-deps.sh src/whitepaper-converter/scripts/
+        cp scripts/configure-chromium.sh src/whitepaper-converter/scripts/
+        mkdir -p src/whitepaper-converter/converter/assets
+        cp convert.py src/whitepaper-converter/converter/
+        cp requirements.txt package.json src/whitepaper-converter/converter/
+        cp assets/config.json assets/puppeteerConfig.json.orig assets/cosai-template.tex assets/cosai.sty assets/cosai-logo.png assets/background.pdf "assets/CoSAI(Light).pdf" src/whitepaper-converter/converter/assets/
