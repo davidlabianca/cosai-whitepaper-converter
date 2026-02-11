@@ -436,6 +436,11 @@ def main() -> None:
         choices=VALID_LATEX_ENGINES,
         help=f"LaTeX engine to use (default: {DEFAULT_LATEX_ENGINE})",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Save intermediate files (processed.md, .tex) and show verbose output",
+    )
 
     args = parser.parse_args()
 
@@ -477,7 +482,6 @@ def main() -> None:
         output_path = os.path.abspath(args.output_file)
         cmd = [
             "pandoc",
-            "--quiet",
             "processed.md",  # relative path since we run from temp_dir
             "-o",
             output_path,
@@ -486,29 +490,81 @@ def main() -> None:
             "--syntax-highlighting=idiomatic",
         ]
 
-        # Add metadata variables if provided
-        if args.title:
-            cmd.extend(["-V", f"title={args.title}"])
-        if args.author:
-            cmd.extend(["-V", f"author={args.author}"])
-        if args.date:
-            cmd.extend(["-V", f"date={args.date}"])
+        if not args.debug:
+            cmd.insert(1, "--quiet")
 
-        cmd.extend(["-V", f"git={args.version}"])
+        # Add metadata variables if provided
+        metadata_args = []
+        if args.title:
+            metadata_args.extend(["-V", f"title={args.title}"])
+        if args.author:
+            metadata_args.extend(["-V", f"author={args.author}"])
+        if args.date:
+            metadata_args.extend(["-V", f"date={args.date}"])
+        metadata_args.extend(["-V", f"git={args.version}"])
+        cmd.extend(metadata_args)
 
         try:
             # Run pandoc from temp_dir so tectonic finds assets in cwd
-            # Capture output to suppress tectonic warnings; show only on error
-            result = subprocess.run(cmd, cwd=temp_dir, capture_output=True, text=True)
+            if args.debug:
+                result = subprocess.run(cmd, cwd=temp_dir, text=True)
+            else:
+                # Capture output to suppress tectonic warnings; show only on error
+                result = subprocess.run(
+                    cmd, cwd=temp_dir, capture_output=True, text=True
+                )
             if result.returncode != 0:
                 print(f"❌ Conversion failed ({engine})", file=sys.stderr)
-                if result.stderr:
+                if hasattr(result, "stderr") and result.stderr:
                     print(result.stderr, file=sys.stderr)
                 sys.exit(1)
             print(f"✅ {output_path}")
         except FileNotFoundError:
             print("❌ pandoc not found", file=sys.stderr)
             sys.exit(1)
+
+        # Save debug artifacts alongside the output PDF
+        if args.debug:
+            output_dir = os.path.dirname(output_path) or "."
+            stem = os.path.splitext(os.path.basename(output_path))[0]
+
+            # Save preprocessed markdown
+            debug_md_path = os.path.join(output_dir, f"{stem}_debug.md")
+            with open(debug_md_path, "w") as f:
+                f.write(processed_content)
+            print(f"  Debug: {debug_md_path}")
+
+            # Generate intermediate LaTeX via second pandoc call
+            debug_tex_path = os.path.join(output_dir, f"{stem}_debug.tex")
+            tex_cmd = [
+                "pandoc",
+                "processed.md",
+                "-s",
+                "-t",
+                "latex",
+                "-o",
+                debug_tex_path,
+                f"--template={get_asset_path('cosai-template.tex')}",
+                f"--pdf-engine={engine}",
+            ]
+            tex_cmd.extend(metadata_args)
+
+            try:
+                tex_result = subprocess.run(
+                    tex_cmd, cwd=temp_dir, capture_output=True, text=True
+                )
+                if tex_result.returncode == 0:
+                    print(f"  Debug: {debug_tex_path}")
+                else:
+                    print(
+                        f"  Warning: .tex generation failed: {tex_result.stderr}",
+                        file=sys.stderr,
+                    )
+            except FileNotFoundError:
+                print(
+                    "  Warning: could not generate .tex (pandoc not found)",
+                    file=sys.stderr,
+                )
 
     # Temp directory and all contents auto-cleaned by context manager
 

@@ -349,7 +349,7 @@ check_pandoc_version() {
 
 # Install Pandoc from GitHub releases
 install_pandoc_binary() {
-    local version="3.8.1"  # Minimum for --syntax-highlighting option (added in 3.8)
+    local version="3.8.2.1"  # Fix for unnumbered table counter error (#11201)
 
     if ! command -v curl >/dev/null 2>&1; then
         log_error "curl command not found, cannot download Pandoc binary"
@@ -915,12 +915,12 @@ main() {
         esac
     fi
 
-    # Install Pandoc 3.8+ (required for --syntax-highlighting option)
-    log_info "Installing Pandoc 3.8+..."
+    # Install Pandoc 3.8.2+ (required for --syntax-highlighting and table counter fix #11201)
+    log_info "Installing Pandoc 3.8.2+..."
 
     # Check if package manager has a sufficient version BEFORE installing
-    if check_pandoc_pkg_version "$PKG_MANAGER" 3 8 0; then
-        log_info "Package manager has Pandoc >= 3.8.0, installing from package manager..."
+    if check_pandoc_pkg_version "$PKG_MANAGER" 3 8 2; then
+        log_info "Package manager has Pandoc >= 3.8.2, installing from package manager..."
         install_packages "$PKG_MANAGER" pandoc
     else
         log_info "Package manager Pandoc is too old or unavailable, installing from GitHub releases..."

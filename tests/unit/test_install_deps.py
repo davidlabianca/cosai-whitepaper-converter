@@ -65,10 +65,10 @@ def mock_bin_dir(tmp_path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
 
-    # Add mock pandoc that returns version >= 3.8.0 (required by install-deps.sh)
+    # Add mock pandoc that returns version >= 3.8.2 (required by install-deps.sh)
     pandoc_script = """#!/bin/bash
 if [ "$1" = "--version" ]; then
-    echo "pandoc 3.8.1"
+    echo "pandoc 3.8.2.1"
     echo "Features: +server +lua"
     exit 0
 fi
@@ -79,12 +79,12 @@ exit 0
     pandoc_path.write_text(pandoc_script)
     pandoc_path.chmod(0o755)
 
-    # Add mock apt-cache that returns pandoc version >= 3.8.0
+    # Add mock apt-cache that returns pandoc version >= 3.8.2
     # (used by check_pandoc_pkg_version to check BEFORE installing)
     apt_cache_script = """#!/bin/bash
 if [ "$1" = "show" ] && [ "$2" = "pandoc" ]; then
     echo "Package: pandoc"
-    echo "Version: 3.8.1-1"
+    echo "Version: 3.8.2.1-1"
     echo "Description: general markup converter"
     exit 0
 fi
@@ -171,13 +171,13 @@ exit {exit_code}
     return create_mock_command(bin_dir, manager_name, script, exit_code)
 
 
-def create_mock_pandoc(bin_dir: Path, version: str = "3.8.1"):
+def create_mock_pandoc(bin_dir: Path, version: str = "3.8.2.1"):
     """
     Create a mock pandoc that returns a specific version.
 
     Args:
         bin_dir: Directory to create executable in.
-        version: Version string to return (default: 3.6.4).
+        version: Version string to return (default: 3.8.2.1).
 
     Returns:
         Path: Path to created mock executable.
@@ -255,7 +255,10 @@ class TestArchitectureDetection:
 
         # Mock uname -m to return x86_64
         create_mock_command(
-            mock_bin_dir, "uname", "#!/bin/bash\n[[ \"$1\" == \"-m\" ]] && echo 'x86_64' || echo 'Linux'\nexit 0\n", 0
+            mock_bin_dir,
+            "uname",
+            "#!/bin/bash\n[[ \"$1\" == \"-m\" ]] && echo 'x86_64' || echo 'Linux'\nexit 0\n",
+            0,
         )
 
         # Mock verify-deps.sh to pass
@@ -273,7 +276,11 @@ class TestArchitectureDetection:
         result = run_install_deps(env=mock_env, cwd=tmp_path)
 
         # Should detect x86_64 architecture
-        assert "x86_64" in result.stdout.lower() or "amd64" in result.stdout.lower() or result.returncode == 0
+        assert (
+            "x86_64" in result.stdout.lower()
+            or "amd64" in result.stdout.lower()
+            or result.returncode == 0
+        )
 
     def test_detects_arm64_architecture(self, mock_env, mock_bin_dir, tmp_path):
         """
@@ -288,7 +295,10 @@ class TestArchitectureDetection:
 
         # Mock uname -m to return aarch64
         create_mock_command(
-            mock_bin_dir, "uname", "#!/bin/bash\n[[ \"$1\" == \"-m\" ]] && echo 'aarch64' || echo 'Linux'\nexit 0\n", 0
+            mock_bin_dir,
+            "uname",
+            "#!/bin/bash\n[[ \"$1\" == \"-m\" ]] && echo 'aarch64' || echo 'Linux'\nexit 0\n",
+            0,
         )
 
         # Mock verify-deps.sh to pass
@@ -306,7 +316,11 @@ class TestArchitectureDetection:
         result = run_install_deps(env=mock_env, cwd=tmp_path)
 
         # Should detect ARM64 architecture
-        assert "aarch64" in result.stdout.lower() or "arm64" in result.stdout.lower() or result.returncode == 0
+        assert (
+            "aarch64" in result.stdout.lower()
+            or "arm64" in result.stdout.lower()
+            or result.returncode == 0
+        )
 
 
 class TestPlatformDetection:
@@ -1278,10 +1292,129 @@ class TestErrorHandling:
         assert result.returncode in [0, 1]
 
 
+class TestPandocVersionBump:
+    """Test Pandoc version bump from 3.8.1 to 3.8.2.1."""
+
+    def test_pandoc_binary_version_is_at_least_3_8_2_1(self):
+        """
+        Test that install_pandoc_binary() version is at least 3.8.2.1.
+
+        Given: scripts/install-deps.sh exists with install_pandoc_binary() function
+        When: Searching for version declaration in the function
+        Then: Version string is >= 3.8.2.1
+        """
+        import re
+
+        content = SCRIPT_PATH.read_text()
+
+        # Find the install_pandoc_binary function and extract version
+        # Pattern: local version="X.Y.Z" or local version='X.Y.Z'
+        version_pattern = r'install_pandoc_binary\(\)\s*\{[^}]*local\s+version=["\']([0-9]+\.[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?)["\']'
+        match = re.search(version_pattern, content, re.DOTALL)
+
+        assert match is not None, (
+            "Could not find 'local version=' in install_pandoc_binary()"
+        )
+
+        version_str = match.group(1)
+        version_parts = [int(x) for x in version_str.split(".")]
+
+        # Pad to 4 components for comparison (3.8.2.1 format)
+        while len(version_parts) < 4:
+            version_parts.append(0)
+
+        # Expected minimum: 3.8.2.1
+        expected_min = [3, 8, 2, 1]
+
+        assert version_parts >= expected_min, (
+            f"Pandoc binary version {version_str} is less than 3.8.2.1"
+        )
+
+    def test_pandoc_pkg_version_check_requires_3_8_2(self):
+        """
+        Test that check_pandoc_pkg_version call requires at least 3.8.2.
+
+        Given: scripts/install-deps.sh contains check_pandoc_pkg_version call
+        When: Searching for the version check arguments
+        Then: Minimum version is >= 3 8 2
+        """
+        import re
+
+        content = SCRIPT_PATH.read_text()
+
+        # Find check_pandoc_pkg_version call with version arguments
+        # Pattern: check_pandoc_pkg_version "$PKG_MANAGER" MAJOR MINOR PATCH
+        version_check_pattern = (
+            r'check_pandoc_pkg_version\s+["\$][^"]*["]\s+(\d+)\s+(\d+)\s+(\d+)'
+        )
+        match = re.search(version_check_pattern, content)
+
+        assert match is not None, (
+            "Could not find check_pandoc_pkg_version call with version args"
+        )
+
+        major = int(match.group(1))
+        minor = int(match.group(2))
+        patch = int(match.group(3))
+
+        version_tuple = (major, minor, patch)
+        expected_min = (3, 8, 2)
+
+        assert version_tuple >= expected_min, (
+            f"check_pandoc_pkg_version requires {major}.{minor}.{patch}, expected >= 3.8.2"
+        )
+
+    def test_pandoc_binary_version_comment_references_issue(self):
+        """
+        Test that version line comment mentions the bug fix context.
+
+        Given: scripts/install-deps.sh with version declaration in install_pandoc_binary()
+        When: Searching for comment near version line
+        Then: Comment includes reference to issue 11201 or unnumbered table counter bug
+        """
+        import re
+
+        content = SCRIPT_PATH.read_text()
+
+        # Find the install_pandoc_binary function
+        func_start = content.find("install_pandoc_binary() {")
+        assert func_start != -1, "Could not find install_pandoc_binary() function"
+
+        # Find the next closing brace (end of function) - simple heuristic
+        func_end = content.find("\n}\n", func_start)
+        assert func_end != -1, "Could not find end of install_pandoc_binary() function"
+
+        function_body = content[func_start:func_end]
+
+        # Find the version line
+        version_line_match = re.search(
+            r'local\s+version=["\']([0-9.]+)["\'](.*)$', function_body, re.MULTILINE
+        )
+        assert version_line_match is not None, "Could not find version declaration"
+
+        # Check comment on same line or next few lines (within ~200 chars after version line)
+        context_start = version_line_match.start()
+        context_end = min(context_start + 200, len(function_body))
+        context = function_body[context_start:context_end]
+
+        # Look for issue references (case insensitive)
+        context_lower = context.lower()
+        has_issue_ref = (
+            "11201" in context_lower
+            or "unnumbered" in context_lower
+            or ("counter" in context_lower and "table" in context_lower)
+        )
+
+        assert has_issue_ref, (
+            f"Comment near version line does not reference issue 11201 or unnumbered table bug. "
+            f"Context: {context[:150]}"
+        )
+
+
 """
 Test Summary
 ============
-Total Tests: 37
+Total Tests: 40
 - Script Existence: 2
 - Architecture Detection: 2 (x86_64, ARM64)
 - Platform Detection: 6
@@ -1291,6 +1424,7 @@ Total Tests: 37
 - Idempotency: 2
 - Package Installation: 5
 - Error Handling: 3
+- Pandoc Version Bump: 3 (binary version >= 3.8.2.1, pkg check >= 3.8.2, comment references issue)
 
 Coverage Areas:
 - Script existence and executability
@@ -1302,6 +1436,7 @@ Coverage Areas:
 - Idempotent behavior (safe to run multiple times)
 - Package installation (Pandoc, librsvg, python-frontmatter, mermaid-cli, chromium config)
 - Error handling (network errors, missing package manager, CI environments)
+- Pandoc version requirements (3.8.2.1 binary, 3.8.2 package manager minimum, bug fix documentation)
 
 Test Approach:
 - Uses subprocess to execute shell script
@@ -1311,7 +1446,8 @@ Test Approach:
 - Mocks verify-deps.sh for post-install verification
 - Tests both positive and negative cases
 - Ensures proper exit codes and output (strict assertions for exit codes)
+- Static analysis tests for version strings and comments
 
-Note: All tests are expected to FAIL initially (RED phase of TDD).
-The script scripts/install-deps.sh does not exist yet.
+Note: TestPandocVersionBump tests are expected to FAIL initially (RED phase of TDD).
+The version bump from 3.8.1 → 3.8.2.1 will be implemented in the GREEN phase.
 """
