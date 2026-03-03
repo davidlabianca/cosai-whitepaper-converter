@@ -1399,16 +1399,18 @@ class TestPandocVersionBump:
         context_end = min(context_start + 200, len(function_body))
         context = function_body[context_start:context_end]
 
-        # Look for issue references (case insensitive)
+        # Look for version rationale references (case insensitive)
         context_lower = context.lower()
         has_issue_ref = (
             "11201" in context_lower
             or "unnumbered" in context_lower
             or ("counter" in context_lower and "table" in context_lower)
+            or "alerts" in context_lower
+            or "callout" in context_lower
         )
 
         assert has_issue_ref, (
-            f"Comment near version line does not reference issue 11201 or unnumbered table bug. "
+            f"Comment near version line does not reference version rationale. "
             f"Context: {context[:150]}"
         )
 

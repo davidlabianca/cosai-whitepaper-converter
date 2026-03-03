@@ -524,10 +524,13 @@ def main() -> None:
         output_path = os.path.abspath(args.output_file)
         cmd = [
             "pandoc",
+            "-f",
+            "markdown+alerts",
             "processed.md",  # relative path since we run from temp_dir
             "-o",
             output_path,
             f"--template={get_asset_path('cosai-template.tex')}",
+            f"--lua-filter={get_asset_path('callout.lua')}",
             f"--pdf-engine={engine}",
             "--syntax-highlighting=idiomatic",
             f"--resource-path={os.path.dirname(os.path.abspath(args.input_file)) or '.'}",
@@ -581,6 +584,8 @@ def main() -> None:
             debug_tex_path = os.path.join(output_dir, f"{stem}_debug.tex")
             tex_cmd = [
                 "pandoc",
+                "-f",
+                "markdown+alerts",
                 "processed.md",
                 "-s",
                 "-t",
@@ -588,6 +593,7 @@ def main() -> None:
                 "-o",
                 debug_tex_path,
                 f"--template={get_asset_path('cosai-template.tex')}",
+                f"--lua-filter={get_asset_path('callout.lua')}",
                 f"--pdf-engine={engine}",
             ]
             tex_cmd.extend(metadata_args)

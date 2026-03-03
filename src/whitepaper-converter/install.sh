@@ -123,7 +123,7 @@ if [ -n "${CONVERTER_DIR}" ]; then
     # Copy assets explicitly (avoids glob issues with special filenames)
     if [ -d "${CONVERTER_DIR}/assets" ]; then
         for asset in config.json puppeteerConfig.json.orig cosai-template.tex cosai.sty \
-                     cosai-logo.png background.pdf "CoSAI(Light).pdf"; do
+                     callout.lua cosai-logo.png background.pdf "CoSAI(Light).pdf"; do
             if [ -f "${CONVERTER_DIR}/assets/${asset}" ]; then
                 cp "${CONVERTER_DIR}/assets/${asset}" "${INSTALL_PATH}/assets/"
             fi

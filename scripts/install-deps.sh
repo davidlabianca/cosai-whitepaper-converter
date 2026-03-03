@@ -351,7 +351,7 @@ check_pandoc_version() {
 
 # Install Pandoc from GitHub releases
 install_pandoc_binary() {
-    local version="3.8.2.1"  # Fix for unnumbered table counter error (#11201)
+    local version="3.9"  # 3.9 adds alerts extension for GFM callouts
 
     if ! command -v curl >/dev/null 2>&1; then
         log_error "curl command not found, cannot download Pandoc binary"
@@ -917,8 +917,8 @@ main() {
         esac
     fi
 
-    # Install Pandoc 3.8.2+ (required for --syntax-highlighting and table counter fix #11201)
-    log_info "Installing Pandoc 3.8.2+..."
+    # Install Pandoc 3.9+ (3.9 adds +alerts extension for GFM callouts; 3.8.2.1 fixed #11201)
+    log_info "Installing Pandoc 3.9+..."
 
     # Check if package manager has a sufficient version BEFORE installing
     if check_pandoc_pkg_version "$PKG_MANAGER" 3 8 2; then

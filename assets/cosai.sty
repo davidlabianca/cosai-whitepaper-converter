@@ -258,6 +258,43 @@
   {0pt}
   {}
 
+% --- GFM Callout / Alert Support ---
+\tcbuselibrary{skins, breakable}
+
+% Callout color definitions (matching GitHub alert palette)
+\definecolor{calloutBlue}{RGB}{0, 102, 204}
+\definecolor{calloutBlueBg}{RGB}{234, 243, 252}
+\definecolor{calloutGreen}{RGB}{30, 120, 60}
+\definecolor{calloutGreenBg}{RGB}{234, 250, 237}
+\definecolor{calloutPurple}{RGB}{130, 80, 223}
+\definecolor{calloutPurpleBg}{RGB}{243, 237, 252}
+\definecolor{calloutAmber}{RGB}{191, 135, 0}
+\definecolor{calloutAmberBg}{RGB}{255, 248, 230}
+\definecolor{calloutRed}{RGB}{207, 34, 46}
+\definecolor{calloutRedBg}{RGB}{255, 235, 235}
+
+% Per-type color overrides using tcolorbox .try key (silently ignored for unknown types)
+\tcbset{
+  callout-note/.style={colback=calloutBlueBg, colframe=calloutBlue},
+  callout-tip/.style={colback=calloutGreenBg, colframe=calloutGreen},
+  callout-important/.style={colback=calloutPurpleBg, colframe=calloutPurple},
+  callout-warning/.style={colback=calloutAmberBg, colframe=calloutAmber},
+  callout-caution/.style={colback=calloutRedBg, colframe=calloutRed},
+}
+
+% cosaicallout{type} — parameterized tcolorbox for GFM alert types
+% Supported types: note, tip, important, warning, caution
+\newtcolorbox{cosaicallout}[1]{
+  enhanced, breakable,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  boxrule=0pt, leftrule=3pt, sharp corners,
+  fonttitle=\fontseries{mb}\selectfont\small,
+  coltitle=cosaiDarkBlue,
+  title={\MakeUppercase{#1}},
+  colback=calloutBlueBg, colframe=calloutBlue,
+  callout-#1/.try,
+}
+
 % --- Suppress cosmetic LaTeX warnings ---
 % Underfull hbox warnings are common with short headings and the CoSAI underline style
 \hbadness=10000  % Suppress underfull hbox warnings
