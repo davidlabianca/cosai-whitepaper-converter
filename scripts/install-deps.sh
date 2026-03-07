@@ -921,8 +921,8 @@ main() {
     log_info "Installing Pandoc 3.9+..."
 
     # Check if package manager has a sufficient version BEFORE installing
-    if check_pandoc_pkg_version "$PKG_MANAGER" 3 8 2; then
-        log_info "Package manager has Pandoc >= 3.8.2, installing from package manager..."
+    if check_pandoc_pkg_version "$PKG_MANAGER" 3 9 0; then
+        log_info "Package manager has Pandoc >= 3.9, installing from package manager..."
         install_packages "$PKG_MANAGER" pandoc
     else
         log_info "Package manager Pandoc is too old or unavailable, installing from GitHub releases..."
