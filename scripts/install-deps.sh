@@ -1014,8 +1014,12 @@ main() {
         case "$PKG_MANAGER" in
             apt-get)
                 # Detect correct ALSA package name (Ubuntu 24.04+ uses libasound2t64)
+                # apt-cache show succeeds for virtual packages, so use apt-cache policy
+                # to check if libasound2 has a real installable candidate
                 local alsa_pkg="libasound2"
-                if ! apt-cache show libasound2 >/dev/null 2>&1 && apt-cache show libasound2t64 >/dev/null 2>&1; then
+                local alsa_candidate
+                alsa_candidate=$(apt-cache policy libasound2 2>/dev/null | grep 'Candidate:' | awk '{print $2}')
+                if [ "$alsa_candidate" = "(none)" ] && apt-cache policy libasound2t64 2>/dev/null | grep -q 'Candidate:'; then
                     alsa_pkg="libasound2t64"
                 fi
                 # Core Chromium dependencies for Puppeteer/Playwright
