@@ -1,16 +1,6 @@
 name: Test Python
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'convert.py'
-      - 'tests/**'
-      - 'assets/*.sty'
-      - 'assets/*.tex'
-      - 'pyproject.toml'
-      - 'requirements.txt'
-      - '.github/workflows/test-python.yaml'
   pull_request:
     paths:
       - 'convert.py'
@@ -20,6 +10,7 @@ on:
       - 'pyproject.toml'
       - 'requirements.txt'
       - '.github/workflows/test-python.yaml'
+  workflow_dispatch:
   workflow_call:
 
 concurrency:
