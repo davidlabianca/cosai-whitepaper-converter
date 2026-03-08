@@ -1,16 +1,6 @@
 name: Test Devcontainer Feature
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'test/**'
-      - 'scripts/**'
-      - 'convert.py'
-      - 'assets/**'
-      - '.github/workflows/test-feature.yaml'
-      - '.github/actions/bundle-feature/action.yaml'
   pull_request:
     paths:
       - 'src/**'
@@ -20,6 +10,7 @@ on:
       - 'assets/**'
       - '.github/workflows/test-feature.yaml'
       - '.github/actions/bundle-feature/action.yaml'
+  workflow_dispatch:
   workflow_call:
 
 permissions:

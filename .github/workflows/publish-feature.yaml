@@ -67,7 +67,7 @@ jobs:
           echo "Version matches: $MANIFEST_VERSION"
 
   # Publish to GitHub Container Registry
-  # Tests are not re-run here — they already passed on the PR and push-to-main
+  # Tests are not re-run here — they already passed on the PR
   # that produced the commit this tag points to.
   publish:
     name: Publish to GHCR
