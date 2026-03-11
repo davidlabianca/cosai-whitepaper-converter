@@ -151,7 +151,6 @@ The PDF auto-numbers figures via LaTeX (`Figure 1`, `Figure 2`, etc.). To cross-
    graph LR
      A[Input] --> B[Process] --> C[Output]
    ```
-   ```
 
 2. **Reference** figures with standard Markdown links using descriptive text:
 
