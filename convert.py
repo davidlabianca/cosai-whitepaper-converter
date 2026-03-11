@@ -572,6 +572,46 @@ def rewrite_figure_refs(
     return pattern.sub(replacer, content)
 
 
+def reattach_orphaned_image_attributes(content: str) -> str:
+    """Promote standalone Pandoc attribute blocks onto the following image line.
+
+    Pandoc only recognises image attributes when they appear inline, immediately
+    after the closing parenthesis of an image link::
+
+        ![alt](url){attrs}      ← Pandoc sees this as an image with attrs
+
+    A bare ``{attrs}`` block on its own line is treated as a Div by Pandoc and
+    silently discarded.  This function repairs that by rewriting::
+
+        {attrs}                 ← orphaned attribute block
+        ![alt](url)             ← image on next line
+
+    to the inline form::
+
+        ![alt](url){attrs}
+
+    This typically arises after Mermaid conversion, where the author wrote
+    ``<!--{#fig-id}-->`` before a code fence that became an image after rendering.
+
+    Only the attribute block immediately preceding the image is attached
+    (single-pass).  Authors who need multiple attributes should combine them
+    into one block, e.g. ``{#fig-id width=80%}``.
+
+    Args:
+        content: Markdown source string.
+
+    Returns:
+        Content with orphaned attribute blocks reattached inline to following
+        images.
+    """
+    return re.sub(
+        r"^(\{[^}]+\})\n(!\[[^\]]*\]\([^)]+\))$",
+        r"\2\1",
+        content,
+        flags=re.MULTILINE,
+    )
+
+
 def strip_html_comment_attributes(content: str) -> str:
     """Strip HTML comment wrappers from Pandoc/LaTeX directives.
 
@@ -603,6 +643,7 @@ def process_markdown(
     5. Strip HTML comment wrappers from Pandoc attributes
     5a. (optional) Build figure registry, validate refs, rewrite figure links
     6. Convert Mermaid diagrams to SVG images
+    6b. Reattach orphaned Pandoc attribute blocks to following image lines
     7. Download remote images to local files
     8. Convert HTML break tags to LaTeX newlines
 
@@ -688,6 +729,9 @@ def process_markdown(
             return match.group(0)  # distinct failure, keep original
 
     content = mermaid_pattern.sub(mermaid_replacer, content)
+
+    # 6b. Reattach orphaned Pandoc attribute blocks to following image lines
+    content = reattach_orphaned_image_attributes(content)
 
     # 7. Handle Remote Images
     # Regex to find image links: ![alt](url)
